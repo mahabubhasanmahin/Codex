@@ -1,76 +1,74 @@
 # CrossSkinNet
 
 Explainable Multimodal Skin Disease Classification Under Missing Metadata.
-Python 3.10+; intended runtime: Kaggle notebooks, PyTorch, one GPU, 12-hour sessions.
-This repository contains schema-driven raw dataset ingestion, later-stage placeholders, and offline test fixtures.
-PyTorch is not required by the skeleton; no weights or real datasets are downloaded.
+Python 3.10+, targeting Kaggle notebooks with one GPU and a 12-hour session limit.
+
+Steps 0–2 are implemented. Further implementation is paused for reviewed medical
+label mappings, following the requested stop-on-missing-information rule.
+See [the Kaggle notebook cells](docs/RUN_ON_KAGGLE.md) and [project rules](AGENTS.md).
 
 ```sh
 python -m pip install -r requirements.txt
 pytest -q
-python scripts/01_merge.py --help
-```
-
-`configs/default.yaml` defines seed 42, input paths and the output root
-(default `/kaggle/working`). All pipeline outputs must use `paths.output_root`.
-Actual dataset layouts and column mappings must be inspected and configured before
-implementing ingestion; these are deliberately unspecified here.
-
-Pipeline stages: `01_merge` (implemented), `02_deduplicate`, `03_split`, `04_preprocess`,
-`05_train`, `06_explain`, `07_evaluate`. Scripts are thin CLIs over
-`src/crossskinnet/`; each accepts `--config`. Stages 02–07 remain stubs.
-
-Step 1 writes `raw_train_pool.csv` and `raw_test_pool.csv` under the configured
-output root and prints shapes, sample rows and source/label counts. It preserves
-raw duplicates for the later deduplication stage; these tables are not ready
-for training until external-overlap removal and group splitting are complete.
-
-```sh
 python scripts/01_merge.py --config configs/default.yaml --schemas configs/dataset_schemas.yaml
+python scripts/02_labels.py inventory --config configs/default.yaml
+# Review configs/label_mapping.csv before applying.
+python scripts/02_labels.py apply --config configs/default.yaml
 ```
 
-`configs/dataset_schemas.yaml` is derived from the uploaded
-`dataset_inspection.zip` inventories and column samples:
+## Configuration and data safety
 
-- PAD: metadata CSV, `diagnostic` labels, patient/lesion IDs and six symptoms.
-- ISIC: one-hot ground truth plus the image-to-lesion grouping CSV.
-- Dermnet: class folder labels from both original train and test directories.
+`configs/default.yaml` contains the seed (42), all dataset roots, pool membership
+and `paths.output_root` (default `/kaggle/working`). All runtime outputs use this
+root. The editable label mapping in `configs/` is the requested exception.
+
+Training sources are PAD-UFES-20, ISIC2018 and Dermnet. HAM10000 and PH2 are
+external test only. Step 1 does not split or deduplicate: raw pools must not be
+used for training until external-overlap removal and group splitting are built.
+Missing metadata remains NaN plus a per-field observed mask (1 observed, 0 missing).
+No statistical imputation or automatic diagnosis equivalences are used.
+
+## Implemented stages
+
+Step 1 writes separate `raw_train_pool.csv` and `raw_test_pool.csv`, printing shapes,
+heads and source/label counts. The dataset schemas come from `dataset_inspection.zip`:
+
+- PAD: metadata diagnoses, patient/lesion identifiers and six symptoms.
+- ISIC: one-hot labels joined with image-to-lesion groupings.
+- Dermnet: class folders from both original train and test partitions.
 - HAM: metadata diagnoses and uppercase image directories, selecting one copy
-  of the duplicated upper/lowercase collections shown in the inventory.
-- PH2: `Folha1` spreadsheet clinical diagnosis X markers, located via inspected
-  header text; only dermoscopic BMPs are selected, excluding lesion/ROI masks.
+  of the duplicate upper/lowercase collections in the inventory.
+- PH2: clinical X markers from `Folha1`, located by inspected headers; only
+  dermoscopic BMPs are ingested, excluding lesion/ROI masks.
 
-The PH2 archive reports column samples rather than complete worksheet rows.
-The reader discovers header columns at runtime and requires exactly one clinical
-label per image; inconsistent layouts fail rather than assigning guessed labels.
-The real Kaggle files are unavailable in this workspace, so full ingestion must
-still be verified there. Tests exercise these schemas on miniature local layouts.
-`openpyxl` reads PH2 XLSX files without introducing pandas or model dependencies.
+Schema mismatches, missing files, ambiguous IDs and invalid one-hot labels fail
+explicitly. PAD `UNK` and HAM `unknown` metadata values become NaN. Relative data
+and output paths resolve against the configuration file directory. The real Kaggle
+files are not available here, so real ingestion remains to be verified on Kaggle.
+The inspection reports PH2 column samples rather than complete worksheet rows;
+its reader verifies headers and one clinical label per image at runtime.
+`openpyxl` is needed for PH2 spreadsheets; no model dependencies are added yet.
 
-The CSV loader supports explicitly listed metadata partitions, column/symptom
-mappings, filename templates, indexed image globs, one-hot labels and a validated
-lesion join. Missing columns/images, duplicate image IDs in configured directories,
-and ambiguous labels produce errors. Image paths resolve against each configured
-dataset root. Relative dataset/output roots resolve against the config directory.
-PAD `UNK` and HAM `unknown` metadata values become NaN with a missing mask.
+Step 2 inventory prints exact observed label counts and writes
+`original_label_counts.csv`, adding missing entries to the editable mapping without
+overwriting existing decisions. The committed mapping contains 46 observed labels
+with unified labels and coarse groups deliberately blank. Supply reviewed values
+or set `include=False` with a reason. Applying an unfinished mapping fails.
 
-Synthetic fixtures generate their own `dataset_schemas.yaml`. Use that file and
-the generated `config.yaml` with the same CLI to exercise ingestion offline.
-Missing fields are serialized as `NaN`; metadata masks use 1 for observed and 0
-for missing. No metadata is imputed.
+Apply writes `labeled_train_pool.csv`, `labeled_test_pool.csv`, `label_counts.csv`,
+`label_exclusions.csv`, and `label_warnings.csv`. Explicit exclusions are counted
+and logged. External classes without a training counterpart remain in the external
+table with `zero_shot_eligible=False` and appear in the warnings report. No rows
+are silently dropped. Warnings also list training classes with fewer than 50 rows.
 
-PAD-UFES-20, ISIC2018 and Dermnet form the training pool. HAM10000 and PH2
-are zero-shot external tests only: never train or validate on them. Remove
-training images duplicated in either external dataset before splitting.
-Split by patient/lesion `group_id`, with no group shared between splits.
-Preserve missing metadata as NaN plus a per-field mask; never mean/mode impute.
-Future pipeline stages must print shapes, heads and counts and save intermediate CSVs.
+## Offline fixtures and verification
 
-`tests/fixtures/make_synthetic_data.py` generates a temporary synthetic root with
-30 random 16×16 RGB PNGs per dataset, CSV metadata and a generated config.
-Its synthetic layout is not a claim about the real Kaggle data. Each dataset
-contains an internal duplicate; ISIC2018 and HAM10000 also share an image.
-`age_mask=1` means observed and `0` means missing. Tests own cleanup; callers
-using the generator directly must remove the returned temporary directory.
-Tests stay offline and use synthetic data; future model tests must use a tiny
-random backbone. No pretrained-weight downloads are permitted in tests.
+`tests/fixtures/make_synthetic_data.py` creates 30 tiny random RGB images per source,
+metadata CSVs, and synthetic config/schema files in a temporary directory. Each
+source has an internal duplicate, and ISIC/HAM share an image. These layouts make
+no claims about the real datasets. Tests own cleanup; direct callers must remove
+the returned temporary root themselves. Additional miniature layouts test the
+production schemas, including a PH2 spreadsheet and mask exclusion.
+Tests require no network or pretrained weights. Future model tests must use a
+small random backbone. `AGENTS.md` records the masking,
+data isolation and per-step test/commit requirements.
