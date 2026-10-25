@@ -1,0 +1,83 @@
+# Derived from dataset_inspection.zip. HAM uppercase directories select one copy.
+datasets:
+  PAD-UFES-20:
+    format: csv
+    metadata_files:
+    - PAD-UFES-20/metadata.csv
+    columns:
+      image_id: img_id
+      image_path: img_id
+      original_label: diagnostic
+      patient_id: patient_id
+      lesion_id: lesion_id
+      age: age
+      sex: gender
+      site: region
+    symptoms:
+      itch: itch
+      grew: grew
+      hurt: hurt
+      changed: changed
+      bleed: bleed
+      elevation: elevation
+    image_template: PAD-UFES-20/Dataset/{value}
+    missing_values:
+    - UNK
+  ISIC2018:
+    format: csv
+    metadata_files:
+    - ISIC2018/ISIC2018_Task3_Training_GroundTruth/ISIC2018_Task3_Training_GroundTruth/ISIC2018_Task3_Training_GroundTruth.csv
+    columns:
+      image_id: image
+      image_path: image
+    one_hot_labels:
+    - MEL
+    - NV
+    - BCC
+    - AKIEC
+    - BKL
+    - DF
+    - VASC
+    image_template: ISIC2018/ISIC2018_Task3_Training_Input/ISIC2018_Task3_Training_Input/{value}.jpg
+    join:
+      file: ISIC2018/ISIC2018_Task3_Training_LesionGroupings.csv
+      key: image
+      columns:
+        lesion_id: lesion_id
+  Dermnet:
+    format: folders
+    image_globs:
+    - train/*/*
+    - test/*/*
+    extensions:
+    - .jpg
+    label_from: parent_name
+  HAM10000:
+    format: csv
+    metadata_files:
+    - HAM10000_metadata.csv
+    columns:
+      image_id: image_id
+      image_path: image_id
+      original_label: dx
+      lesion_id: lesion_id
+      age: age
+      sex: sex
+      site: localization
+    image_globs:
+    - HAM10000_images_part_1/*.jpg
+    - HAM10000_images_part_2/*.jpg
+    missing_values:
+    - unknown
+  PH2:
+    format: xlsx
+    metadata_file: PH2Dataset/PH2_dataset.xlsx
+    sheet: Folha1
+    image_globs:
+    - PH2Dataset/PH2 Dataset images/*/*_Dermoscopic_Image/*.bmp
+    image_header: Image Name
+    label_headers:
+    - Common Nevus
+    - Atypical Nevus
+    - Melanoma
+    label_marker: X
