@@ -18,3 +18,6 @@ datasets:
   PH2:
     path: /kaggle/input/datasets/spacesurfer/ph2-dataset
     pool: external_test
+dedup:
+  hamming_threshold: 5
+  workers: 4
