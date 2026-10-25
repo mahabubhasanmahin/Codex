@@ -56,3 +56,6 @@
 | `tests/test_metadata.py` | Field normalization and reproducible mask protocols. |
 | `tests/test_model_training.py` | Offline tiny-backbone routing, learnability and CLI training smoke test. |
 | `tests/test_synthetic_data.py` | Validate the offline fixture's leakage cases and missing metadata. |
+| `scripts/00_audit.py` | Mapping-free dataset feasibility audit CLI. |
+| `src/crossskinnet/data/audit.py` | Source/label, metadata and post-duplicate image/group reports. |
+| `tests/test_audit.py` | Offline audit CLI, repeatability and pipeline-isolation checks. |

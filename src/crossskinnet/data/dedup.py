@@ -165,7 +165,9 @@ def run(config_path: Path) -> None:
     write_csv(output / 'deduped_train_pool.csv', kept, list(train[0]) if train else [])
     write_csv(output / 'duplicates_report.csv', pairs, ['image_id_a', 'image_id_b', 'image_path_a', 'image_path_b',
               'source_a', 'source_b', 'distance', 'exact_sha256', 'action'])
-    removed_rows = [{**train[i], 'removal_reason': 'duplicate_component'} for i in sorted(removed)]
+    removed_rows = [{**train[i], 'removal_reason': (
+        'external_overlap_component' if find(i) in external_roots else 'training_duplicate_component')}
+        for i in sorted(removed)]
     write_csv(output / 'removed_training_duplicates.csv', removed_rows, [*train[0], 'removal_reason'])
     ham_groups = [dict(image_id=r['image_id'], lesion_id=r.get('lesion_id', 'NaN')) for r in external if r['source_dataset'] == 'HAM10000']
     write_csv(output / 'ham_lesion_groups.csv', ham_groups, ['image_id', 'lesion_id'])

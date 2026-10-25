@@ -47,3 +47,14 @@ Real pretrained/CUDA experiments and Kaggle data ingestion still need validation
 Read [implementation choices and scientific limits](docs/IMPLEMENTATION.md),
 [private dataset upload instructions](docs/upload_to_kaggle.md),
 [file inventory](docs/FILES.md) and [agent rules](AGENTS.md).
+
+Before choosing real disease classes, run the mapping-free feasibility audit:
+
+```sh
+python scripts/00_audit.py --config configs/default.yaml --schemas configs/dataset_schemas.yaml
+```
+
+It refreshes merge and writes label-review, metadata availability and post-dedup
+counts under output_root/audit, retaining all external images as overlap references.
+No medical equivalences are inferred and no training is started. See the Kaggle
+guide for displaying/sharing the reports; these raw audit pools are not training-ready.

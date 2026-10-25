@@ -142,3 +142,35 @@ Unavailable outcomes are reported, not manufactured. Backbone comparison CSV
 accumulates completed evaluations; it does not fabricate unrun backbone results.
 `--no-explainability` is available for diagnosis only; full paper evaluation should
 include explanations. No external data enters training or calibration.
+
+## Before choosing final disease classes: one-command feasibility audit
+
+The audit requires no label or site mappings. It refreshes Step 1 from the actual
+configured mounts (all five datasets are required), then hashes isolated raw
+copies below output_root/audit. It does not train or overwrite normalized/labeled
+pipeline tables. The first hashing pass can take time; subsequent audits reuse
+fingerprint-validated hashes. This is raw-data feasibility, not clinical approval.
+
+```python
+!python scripts/00_audit.py --config configs/default.yaml --schemas configs/dataset_schemas.yaml
+```
+
+```python
+from pathlib import Path
+import pandas as pd
+import yaml
+cfg = yaml.safe_load(Path('configs/default.yaml').read_text())
+audit = Path(cfg['paths']['output_root']) / 'audit'
+for name in ('source_summary', 'class_feasibility', 'metadata_availability', 'dermnet_review'):
+    print('\n' + name)
+    display(pd.read_csv(audit / f'{name}.csv'))
+```
+
+Share REPORT.md and these four CSVs to review the final disease taxonomy. Group
+counts are recorded identifier counts/proxies, not proof of biological independence.
+Counts are per original label, not per unified disease until equivalences are
+reviewed. Dermnet folder wording alone cannot approve an image-level diagnosis.
+
+The audit also creates `audit/audit_reports.zip` with the six aggregate report
+files (no image data or row-level raw metadata). Download it from Kaggle's Output
+panel and share it for review.
