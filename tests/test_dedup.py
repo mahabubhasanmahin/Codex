@@ -45,3 +45,15 @@ def test_tree_matches_reference():
     for value in values:
         assert sorted(tree.query(value, 2)) == sorted((i, (value ^ other).bit_count())
             for i, other in enumerate(values) if (value ^ other).bit_count() <= 2)
+
+
+def test_excluded_external_labels_still_protect_training(tmp_path: Path):
+    """Label exclusion cannot hide external images from the overlap reference pool."""
+    root = make_synthetic_data(tmp_path / 'data')
+    merge_datasets(root / 'config.yaml', root / 'dataset_schemas.yaml')
+    output = root / 'outputs'
+    write_csv(output / 'metadata_train_pool.csv', read_csv(output / 'raw_train_pool.csv'))
+    # Simulate all HAM diagnoses being excluded at harmonization.
+    write_csv(output / 'metadata_test_pool.csv', [r for r in read_csv(output / 'raw_test_pool.csv') if r['source_dataset'] == 'PH2'])
+    run(root / 'config.yaml')
+    assert 'ISIC2018_000' not in {r['image_id'] for r in read_csv(output / 'deduped_train_pool.csv')}

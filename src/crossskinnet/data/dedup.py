@@ -109,7 +109,10 @@ def run(config_path: Path) -> None:
     if not 0 <= threshold <= 64:
         raise ValueError('hamming_threshold must lie in [0, 64]')
     train = read_csv(output / 'metadata_train_pool.csv')
-    external = read_csv(output / 'metadata_test_pool.csv')
+    # Even externally excluded diagnoses must protect against training leakage.
+    # Label filtering must never shrink the reference set for overlap detection.
+    reference = output / 'raw_test_pool.csv'
+    external = read_csv(reference if reference.exists() else output / 'metadata_test_pool.csv')
     if any(r['source_dataset'] in ('HAM10000', 'PH2') for r in train):
         raise ValueError('External data found in training pool')
     rows = train + external

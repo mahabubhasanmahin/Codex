@@ -75,6 +75,10 @@ class ImageEncoder(nn.Module):
         # Hugging Face ViTs expose the encoder under either encoder or a model prefix.
         base = getattr(self.model, 'encoder', None)
         if base is None:
+            base = getattr(self.model, 'model', None)
+        if base is None and hasattr(self.model, 'layer'):
+            base = self.model
+        if base is None:
             raise ValueError(f'{self.name}: configure/adapt Grad-CAM target for this transformers architecture')
         block = base.layer[-1]
-        return block.layernorm_before
+        return block.norm1 if hasattr(block, 'norm1') else block.layernorm_before

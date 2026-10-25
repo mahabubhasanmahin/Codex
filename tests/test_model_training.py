@@ -41,12 +41,11 @@ def test_routing_and_loss_decrease():
     assert float(criterion(model(image,values,masks)['logits'],labels).detach()) < before * .3
 
 
-def test_train_cli_and_resume(prepared_pipeline: Path):
+def test_train_cli_and_resume(trained_pipeline: tuple[Path, Path]):
     """The actual CLI saves an epoch checkpoint and calibrates only on validation."""
+    prepared_pipeline, _ = trained_pipeline
     args = [sys.executable,str(REPO / 'scripts/06_train.py'),'--config',str(prepared_pipeline),
             '--backbone','tiny','--epochs','1']
-    result = subprocess.run(args,capture_output=True,text=True)
-    assert result.returncode == 0,result.stderr
     from crossskinnet.io import config, read_csv
     run = config(prepared_pipeline)['output'] / 'runs/tiny_finetuned'
     assert (run / 'epoch_001.pt').exists()
@@ -56,3 +55,48 @@ def test_train_cli_and_resume(prepared_pipeline: Path):
     assert len(read_csv(run / 'metrics.csv')) == 1
     result = subprocess.run(args + ['--resume',str(run / 'last.pt')], capture_output=True,text=True)
     assert result.returncode == 0,result.stderr
+
+
+def test_tiny_local_dino_adapters_and_cam(tmp_path: Path):
+    """Tiny randomly initialized local DINO models exercise token reshaping offline."""
+    from transformers import Dinov2Config, Dinov2Model, DINOv3ViTConfig, DINOv3ViTModel
+    from pytorch_grad_cam import GradCAM
+    from pytorch_grad_cam.utils.model_targets import ClassifierOutputTarget
+    from crossskinnet.eval.explain import FixedMetadata, _reshape
+    torch.set_num_threads(2)
+    for name, config_class, model_class in [('dinov2', Dinov2Config, Dinov2Model),
+                                           ('dinov3', DINOv3ViTConfig, DINOv3ViTModel)]:
+        cfg = config_class(hidden_size=32, num_hidden_layers=2, num_attention_heads=4,
+                           intermediate_size=64, image_size=32, patch_size=8)
+        if name == 'dinov3':
+            cfg.num_register_tokens = 2
+        folder = tmp_path / name
+        model_class(cfg).save_pretrained(folder)
+        model = CrossSkinNet(2, name, {'id':str(folder), 'local_files_only':True, 'frozen':True},16,2).eval()
+        image = torch.randn(1,3,32,32,requires_grad=True)
+        meta, mask = torch.ones(1,sum(WIDTHS)), torch.ones(1,len(FIELDS))
+        assert model(image,meta,mask)['logits'].shape == (1,2)
+        with GradCAM(model=FixedMetadata(model,meta,mask),target_layers=[model.image_encoder.cam_layer()],
+                     reshape_transform=lambda value:_reshape(model,value)) as cam:
+            heatmap = cam(image, targets=[ClassifierOutputTarget(0)])
+            assert heatmap.shape == (1,32,32) and np.isfinite(heatmap).all()
+
+
+def test_resume_continues_next_epoch(prepared_pipeline: Path, tmp_path: Path):
+    """A time-budget stop resumes the saved optimizer/scheduler into the next epoch."""
+    import yaml
+    from crossskinnet.io import config, read_csv
+    from crossskinnet.train.engine import run
+    cfg = yaml.safe_load(prepared_pipeline.read_text())
+    old_output = config(prepared_pipeline)['output']
+    cfg['paths']['unified_root'] = str(old_output / 'CrossSkinNet_Unified_Dataset')
+    cfg['paths']['output_root'] = str(tmp_path / 'outputs')
+    cfg['training'].update(epochs=2, max_hours=0)
+    path = tmp_path / 'resume.yaml'
+    path.write_text(yaml.safe_dump(cfg))
+    run(path)
+    directory = tmp_path / 'outputs/runs/tiny_finetuned'
+    assert len(read_csv(directory / 'metrics.csv')) == 1
+    run(path, resume=directory / 'last.pt')
+    assert len(read_csv(directory / 'metrics.csv')) == 2
+    assert (directory / 'epoch_002.pt').exists()

@@ -61,3 +61,7 @@ training:
   p_all: 0.2
   max_hours: 11
   cpu_threads: 2
+evaluation:
+  bootstrap_repetitions: 1000
+  explanations_per_outcome: 10
+  shap_samples: 512
