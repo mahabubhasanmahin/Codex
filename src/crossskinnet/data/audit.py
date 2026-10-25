@@ -59,7 +59,7 @@ def _class_counts(raw: list[dict[str, str]], kept: list[dict[str, str]],
         results.append(dict(source_dataset=source, original_label=label, raw_images=len(rows),
             removed_external_overlap=external, images_after_external_removal=len(rows) - external,
             removed_internal_duplicates=exclusions[(source, label, 'training_duplicate_component')],
-            images_after_all_dedup=len(post), **evidence,
+            images_after_verified_dedup=len(post), **evidence,
             group_evidence='image_fallback_not_patient_independence' if evidence['rows_without_patient_or_lesion'] else
                            ('recorded_identifiers_not_independently_verified' if post else 'no_remaining_images'),
             review='requires_label_review_and_final_cross_source_group_audit'))
@@ -111,12 +111,17 @@ def run(config_path: Path, schemas_path: Path) -> Path:
     # Isolate pre-taxonomy deduplication from reviewed pipeline intermediates.
     write_csv(audit / 'metadata_train_pool.csv', train)
     write_csv(audit / 'raw_test_pool.csv', external)
-    audit_cfg = {'seed': cfg['seed'], 'paths': {'output_root': str(audit.resolve())}, 'dedup': cfg.get('dedup', {})}
+    options = dict(cfg.get('dedup', {}))
+    reviews = Path(options.get('reviews_csv') or output / 'near_duplicate_reviews.csv')
+    if not reviews.is_absolute():
+        reviews = config_path.resolve().parent / reviews
+    options['reviews_csv'] = str(reviews.resolve())
+    audit_cfg = {'seed': cfg['seed'], 'paths': {'output_root': str(audit.resolve())}, 'dedup': options}
     audit_config = audit / 'audit_config.yaml'
     audit_config.write_text(yaml.safe_dump(audit_cfg))
     print('Hashing raw images (first run can take time; later runs reuse the cache).', flush=True)
-    deduplicate(audit_config)
-    kept = read_csv(audit / 'deduped_train_pool.csv')
+    deduplicate(audit_config, allow_pending=True)
+    kept = read_csv(audit / 'provisional_train_pool.csv')
     removed = read_csv(audit / 'removed_training_duplicates.csv')
     counts = _class_counts(train, kept, removed)
     schemas = read_yaml(schemas_path)['datasets']
@@ -126,6 +131,8 @@ def run(config_path: Path, schemas_path: Path) -> Path:
     write_csv(audit / 'metadata_availability.csv', metadata)
     write_csv(audit / 'label_review.csv', labels)
     write_csv(audit / 'dermnet_review.csv', [r for r in labels if r['source_dataset'] == 'Dermnet'], list(labels[0]))
+    import json
+    dedup_status = json.loads((audit / 'dedup_status.json').read_text())
     summaries = []
     for source in sorted({r['source_dataset'] for r in train + external}):
         subset = [r for r in train + external if r['source_dataset'] == source]
@@ -133,6 +140,7 @@ def run(config_path: Path, schemas_path: Path) -> Path:
         is_external = source in ('HAM10000', 'PH2')
         summaries.append(dict(source_dataset=source, pool='external_test' if is_external else 'train',
             raw_images=len(subset), retained_images=len(subset) if is_external else len(post),
+            counts_status='external_unchanged' if is_external else ('verified_dedup' if dedup_status['ready'] else 'provisional_pending_review'),
             **_group_evidence(subset if is_external else post)))
     write_csv(audit / 'source_summary.csv', summaries)
     lines = ['# Dataset feasibility audit', '',
@@ -146,7 +154,9 @@ def run(config_path: Path, schemas_path: Path) -> Path:
         '- label_review.csv / dermnet_review.csv: unresolved disease-label evidence; no automatic approvals.',
         '- duplicates_report.csv / duplicate_pairs.png: representative pHash-component edges to inspect.',
         '', '## Important limits', '',
-        'Deduplication uses the configured pHash threshold, including conservative transitive components.',
+        'Only SHA256 equality or explicitly accepted human reviews authorize removal.',
+        f"Relevant pending reviews: {dedup_status['pending_relevant_pairs']}. Counts are provisional when pending.",
+        'pHash candidates, including distance zero, are NOT automatic duplicates.',
         'Perceptual matches require visual review; exact SHA256 equality is reported separately.',
         'External images are retained even when their labels would later be excluded from evaluation.',
         'Image fallback groups do NOT establish patient independence. Recorded IDs are not independently verified.',
@@ -214,7 +224,7 @@ def review_overlap(config_path: Path) -> Path:
     evidence = overlap_evidence(raw, pairs)
     write_csv(audit / 'overlap_evidence.csv', evidence)
     for source in sorted({r['source_dataset'] for r in raw} - {'ISIC2018'}):
-        selected = [r for r in pairs if r['action'] == 'remove_train_external_overlap'
+        selected = [r for r in pairs if str(r['exact_sha256']).lower() != 'true'
                     and source in (r['source_a'], r['source_b'])]
         write_csv(audit / f'{source}_overlap_pairs.csv', selected, list(pairs[0]) if pairs else
             ['image_id_a','image_id_b','image_path_a','image_path_b','source_a','source_b','distance','exact_sha256','action'])

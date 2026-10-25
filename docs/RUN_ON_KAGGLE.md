@@ -75,7 +75,9 @@ group, then run:
 ```
 
 Inspect duplicates_report.csv, removed_training_duplicates.csv and duplicate_pairs.png.
-ISIC/HAM overlap may remove most/all ISIC training images; report that honestly.
+ISIC/HAM verified overlap may remove most/all ISIC training images; report that honestly.
+If stage 04 reports pending pHash reviews, it is intentionally not ready. Review
+near_duplicate_reviews.csv as described below, then rerun stage 04.
 External pools are never pruned to retain training copies.
 
 ## 5. Build the unified dataset
@@ -193,3 +195,41 @@ Step 5 can take `--schemas configs/dataset_schemas.yaml` explicitly. Otherwise i
 loads dataset_schemas.yaml beside its config if available. Real PAD grouping now
 validates the uploaded patient/lesion filename prefix and uses patient-scoped
 lesion numbers; bare repeated lesion numbers do not merge unrelated patients.
+
+
+## Corrected duplicate policy after the targeted image review
+
+The original automatic `distance <= 5` removal was too aggressive. Default
+near_duplicate_policy is now `review`; the Hamming threshold still generates
+candidates, not decisions. Even distance-zero pHashes can collide.
+
+- SHA256-equal files are automatically grouped, independently of pHash buckets.
+- Other candidates are written to `<output_root>/near_duplicate_reviews.csv`.
+  Review the images, set `is_duplicate` to True or False, and record a reason in
+  notes. Leave uncertain pairs blank. Do not mark all candidates False or True
+  just to bypass the check. Decisions bind to SHA content, not filenames.
+- True joins the duplicate component. False rejects that candidate edge. A False
+  inside a component already joined by accepted edges is a conflicting decision
+  and must be resolved. Blank relevant pairs prevent readiness.
+- Audit runs successfully with pending reviews but writes **provisional** counts.
+  `<output_root>/audit/provisional_train_pool.csv` is not a training dataset.
+- Stage 04 must finish without pending/conflicting relevant pairs before stage 05.
+  Old deduped files are not trusted when the current status is pending. Stage 05
+  also checks the review/CSV fingerprints; training/evaluation validate the built
+  integrity manifest. Rebuild any previously prepared dataset with the new policy.
+
+To regenerate the raw feasibility report using the corrected policy:
+
+```python
+!python scripts/00_audit.py --config configs/default.yaml --schemas configs/dataset_schemas.yaml
+```
+
+Share audit/audit_reports.zip for revised provisional counts. For review, inspect
+near_duplicate_reviews.csv plus audit/near_duplicate_review.png and the pair IDs
+in audit/duplicates_report.csv. Grids only sample up to 20; every remaining relevant
+candidate needs its own decision. Existing hash caches are reused if fingerprints
+match. Input images and raw source metadata are never deleted by deduplication.
+
+After completing decisions, rerun the audit for raw feasibility and stage 04 for
+the harmonized pipeline; reviewed metadata may alter which training copy is best.
+The audit and stage 04 use the same default content-bound review file.

@@ -95,7 +95,20 @@ def run(config_path: Path, mapping_path: Path, schemas_path: Path | None = None)
     cfg = config(config_path)
     output = cfg['output']
     destination = output / 'CrossSkinNet_Unified_Dataset'
-    raw_train = read_csv(output / 'deduped_train_pool.csv')
+    status_file = output / 'dedup_status.json'
+    if not status_file.exists():
+        raise ValueError('Missing dedup_status.json; rerun stage 04 with the review-aware policy')
+    status = json.loads(status_file.read_text())
+    if status.get('policy') != 'review' or not status.get('ready'):
+        raise ValueError('Duplicate review is incomplete; review candidates and rerun stage 04 before building')
+    if status.get('reviews_csv'):
+        review_file = Path(status['reviews_csv'])
+        if not review_file.exists() or hashlib.sha256(review_file.read_bytes()).hexdigest() != status.get('reviews_sha256'):
+            raise ValueError('Duplicate review decisions changed; rerun stage 04 before building')
+    train_file = output / 'deduped_train_pool.csv'
+    if hashlib.sha256(train_file.read_bytes()).hexdigest() != status.get('train_pool_sha256'):
+        raise ValueError('Deduped training CSV differs from the verified status; rerun stage 04')
+    raw_train = read_csv(train_file)
     if not raw_train:
         raise ValueError('No training samples remain after deduplication')
     schema_file = schemas_path or config_path.resolve().parent / 'dataset_schemas.yaml'
@@ -118,6 +131,9 @@ def run(config_path: Path, mapping_path: Path, schemas_path: Path | None = None)
         'datasets': {source: schema.get('grouping', {}) for source, schema in schemas.items()}}))
     write_csv(destination / 'metadata.csv', train)
     write_csv(destination / 'zero_shot.csv', external)
+    integrity = dict(policy='review', ready=True, files={name: hashlib.sha256((destination / name).read_bytes()).hexdigest()
+                     for name in ('metadata.csv','zero_shot.csv')})
+    (destination / 'dataset_integrity.json').write_text(json.dumps(integrity, indent=2))
     write_csv(destination / 'label_mapping.csv', read_csv(mapping_path))
     counts = Counter((r['split'], r['source_dataset'], r['unified_label']) for r in train + external)
     stats = {'seed': cfg['seed'], 'requested_ratios': {'train': .7, 'val': .15, 'test': .15},

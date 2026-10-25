@@ -20,7 +20,7 @@ with all stage outputs, a checkpoint, metrics, plots, Grad-CAM and SHAP examples
 These demo metrics are software checks and must never appear as thesis results.
 
 The real-data workflow is merge → explicit label harmonization → missing metadata
-normalization → cached pHash duplicate removal → group split/image export → model
+normalization → cached SHA/pHash duplicate review → group split/image export → model
 training/calibration → evaluation. Every stage has a thin numbered CLI in scripts/.
 
 `configs/default.yaml` holds seed 42, dataset paths, output root and hyperparameters.
@@ -30,8 +30,9 @@ and anatomical decisions before real-data training; no diagnosis equivalences ar
 invented. Their inventory commands preserve edits and print outstanding entries.
 
 Training sources: PAD-UFES-20, ISIC2018, Dermnet. External only: HAM10000 and PH2.
-Duplicates touching external data are removed from training, never from external
-pools. Matching ISIC/HAM IDs in the inventory signal potentially severe overlap;
+Verified duplicates touching external data are removed from training, never from
+external pools. pHash candidates require explicit review; hash similarity alone
+does not remove images. Pending relevant reviews block dataset build/training. Matching ISIC/HAM IDs in the inventory signal potentially severe overlap;
 only runtime image hashes establish exact/perceptual duplicates. Groups never
 cross development splits. Unknown metadata stays missing; model zero fillers are
 masked and replaced by learned missing-field tokens.

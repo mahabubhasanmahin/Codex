@@ -19,6 +19,19 @@ from crossskinnet.models.network import CrossSkinNet
 from crossskinnet.train.dataset import SkinDataset
 
 
+def validate_integrity(root: Path) -> None:
+    """Require a review-cleared dataset produced by the current build stage."""
+    manifest = root / 'dataset_integrity.json'
+    if not manifest.exists():
+        raise ValueError('Missing dataset_integrity.json; rerun review-aware stages 04 and 05')
+    record = json.loads(manifest.read_text())
+    if record.get('policy') != 'review' or not record.get('ready'):
+        raise ValueError('Dataset is not cleared for duplicate review')
+    for name in ('metadata.csv','zero_shot.csv'):
+        if hashlib.sha256((root / name).read_bytes()).hexdigest() != record.get('files', {}).get(name):
+            raise ValueError(f'{name} differs from the cleared dataset; rebuild stage 05')
+
+
 def seed_all(seed: int) -> None:
     """Set all relevant generators and deterministic CUDA behavior."""
     random.seed(seed)
@@ -101,6 +114,10 @@ def run(config_path: Path, backbone: str = 'tiny', epochs: int | None = None,
     if device.type == 'cuda' and not torch.cuda.is_available():
         raise ValueError('CUDA requested but unavailable')
     root = Path(cfg['paths'].get('unified_root') or cfg['output'] / 'CrossSkinNet_Unified_Dataset')
+    active_status = cfg['output'] / 'dedup_status.json'
+    if active_status.exists() and not json.loads(active_status.read_text()).get('ready'):
+        raise ValueError('Duplicate review incomplete in output_root; do not train a provisional or stale dataset')
+    validate_integrity(root)
     rows = read_csv(root / 'metadata.csv')
     group_splits: dict[str, set[str]] = {}
     for row in rows:

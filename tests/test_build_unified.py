@@ -23,6 +23,9 @@ def test_group_splits_and_resize(tmp_path: Path):
                     unified_label=label, coarse_group='other', patient_id=f'{label}_p{group}', lesion_id='NaN'))
     output.mkdir()
     write_csv(output / 'deduped_train_pool.csv', rows)
+    import hashlib, json
+    (output / 'dedup_status.json').write_text(json.dumps(dict(policy='review',ready=True,
+        train_pool_sha256=hashlib.sha256((output / 'deduped_train_pool.csv').read_bytes()).hexdigest())))
     write_csv(output / 'metadata_test_pool.csv', [{**rows[0], 'source_dataset':'HAM10000', 'unified_label':'unseen'}])
     mapping = tmp_path / 'mapping.csv'
     write_csv(mapping, [{'unified_label':'a'}])

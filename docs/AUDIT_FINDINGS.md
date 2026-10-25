@@ -1,5 +1,12 @@
 # Findings from the uploaded real-data audit
 
+> Correction after reviewing the targeted grids: the old pHash-only removal policy
+> was too aggressive. The removed counts below describe that historical run, not
+> confirmed duplicate counts or a training-ready dataset. Current code removes
+> only SHA-exact or explicitly reviewed duplicates. All other pHash pairs (even
+> distance zero) remain candidates. Rerun the audit for provisional verified-only
+> counts, review candidates, then rerun stage 04 before final counts/training.
+
 Evidence: user-supplied audit_reports.zip, raw_train_pool.csv and
 duplicates_report.csv. Images themselves were not present on this cloud machine;
 the duplicate grid supplied in chat is illustrative, not a review of every pair.

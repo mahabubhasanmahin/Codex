@@ -13,9 +13,11 @@ These are implemented; real-data training and conclusions remain outstanding.
   alone are not proof of identical pixels. Runtime SHA256 and pHash determine
   overlap. If all ISIC images match external images, all those training rows are
   removed. Never reintroduce them to improve dataset size or metrics.
-- Duplicate components are conservative: a transitive near-duplicate chain
-  touching external data removes every training member. Equal pHashes are bucketed;
-  the report stores representative connectivity edges, not every quadratic pair.
+- Only SHA256 equality or explicit human-confirmed near-duplicate edges form
+  removal components. pHash alone is a candidate generator, even at distance zero.
+  A component of accepted edges touching external data removes every training member. SHA-identical files are bucketed. BK-tree radius queries enumerate candidate
+  pairs between distinct content hashes, including collision buckets. Exact clusters
+  use representative edges; this is output-sensitive and can grow with collision density.
   SHA256 equality is reported separately from perceptual similarity. Review the grid.
 - Training-only duplicate components keep the row with most observed model metadata.
   External duplicates are retained. HAM lesion groupings are exported for auditing.
@@ -71,3 +73,11 @@ claimed. Checkpoint files must be trusted local artifacts (PyTorch pickle loadin
    and post-dedup class/source counts before launching real experiments.
 
 See AUDIT_FINDINGS.md for measured ISIC overlap evidence and PAD identifier scope from the uploaded reports.
+
+
+The targeted real-image grids exposed perceptual false positives. Older pHash-only
+retention counts are superseded. Relevant pending decisions block stage 04 readiness;
+audit previews are explicitly provisional. Stage 05 validates the readiness file,
+review-file fingerprint and verified pool fingerprint. Training/evaluation require
+a built dataset integrity manifest; old derived datasets must be rebuilt. A changed
+review file requires stage 04 again, even if only notes were changed.

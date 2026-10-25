@@ -57,3 +57,61 @@ def test_excluded_external_labels_still_protect_training(tmp_path: Path):
     write_csv(output / 'metadata_test_pool.csv', [r for r in read_csv(output / 'raw_test_pool.csv') if r['source_dataset'] == 'PH2'])
     run(root / 'config.yaml')
     assert 'ISIC2018_000' not in {r['image_id'] for r in read_csv(output / 'deduped_train_pool.csv')}
+
+
+def test_phash_collision_requires_review_and_blocks_stale_pool(tmp_path: Path):
+    """Different solid images share pHash but cannot be auto-removed, even at d=0."""
+    import json
+    import pytest
+    import yaml
+    from PIL import Image
+    from crossskinnet.data.build_unified import run as build
+    output = tmp_path / 'output'
+    output.mkdir()
+    first, second = tmp_path / 'red.png', tmp_path / 'blue.png'
+    Image.new('RGB',(16,16),'red').save(first)
+    Image.new('RGB',(16,16),'blue').save(second)
+    train = dict(image_id='a',image_path=str(first),source_dataset='PAD-UFES-20')
+    external = dict(image_id='b',image_path=str(second),source_dataset='HAM10000')
+    write_csv(output / 'metadata_train_pool.csv',[train])
+    write_csv(output / 'raw_test_pool.csv',[external])
+    (output / 'deduped_train_pool.csv').write_text('stale old output\n')
+    cfg = tmp_path / 'config.yaml'
+    cfg.write_text(yaml.safe_dump({'seed':42,'paths':{'output_root':str(output)}}))
+    with pytest.raises(ValueError,match='require review'):
+        run(cfg)
+    status = json.loads((output / 'dedup_status.json').read_text())
+    assert not status['ready'] and status['pending_relevant_pairs'] == 1
+    assert (output / 'deduped_train_pool.csv').read_text() == 'stale old output\n'
+    assert len(read_csv(output / 'provisional_train_pool.csv')) == 1
+    with pytest.raises(ValueError,match='review is incomplete'):
+        build(cfg,tmp_path / 'absent_mapping.csv')
+    reviews = output / 'near_duplicate_reviews.csv'
+    rows = read_csv(reviews)
+    assert rows[0]['distance'] == '0'
+    rows[0]['is_duplicate'] = 'False'
+    rows[0]['notes'] = 'Different generated solid colors; intentional perceptual collision'
+    write_csv(reviews,rows)
+    run(cfg)
+    assert json.loads((output / 'dedup_status.json').read_text())['ready']
+    assert read_csv(output / 'deduped_train_pool.csv')[0]['image_id'] == 'a'
+    rows[0]['is_duplicate'] = 'True'
+    write_csv(reviews,rows)
+    run(cfg)
+    assert not read_csv(output / 'deduped_train_pool.csv')
+    assert len(read_csv(output / 'raw_test_pool.csv')) == 1
+
+
+def test_all_distinct_sha_candidates_in_collision_bucket():
+    """Rejecting a bucket representative cannot hide another close SHA pair."""
+    from crossskinnet.data.dedup import _candidate_edges
+    rows = [dict(image_path=str(index)) for index in range(3)]
+    hashes = {str(index): dict(sha256=str(index),phash='8000000000000000') for index in range(3)}
+    exact, candidates = _candidate_edges(rows,hashes,5,2)
+    assert not exact
+    assert {(a,b) for a,b,_ in candidates} == {(0,1),(0,2),(1,2)}
+    # Exact SHA grouping is never dependent on the pHash representative.
+    hashes['1']['sha256'] = hashes['0']['sha256']
+    hashes['1']['phash'] = 'ffffffffffffffff'
+    exact, _ = _candidate_edges(rows,hashes,5,2)
+    assert exact[0][:2] == (0,1)

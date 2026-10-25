@@ -100,3 +100,23 @@ def test_resume_continues_next_epoch(prepared_pipeline: Path, tmp_path: Path):
     run(path, resume=directory / 'last.pt')
     assert len(read_csv(directory / 'metrics.csv')) == 2
     assert (directory / 'epoch_002.pt').exists()
+
+
+def test_pending_dedup_blocks_training(prepared_pipeline: Path, tmp_path: Path):
+    """An old built dataset cannot bypass an active unresolved duplicate review."""
+    import json
+    import yaml
+    import pytest
+    from crossskinnet.io import config
+    from crossskinnet.train.engine import run
+    cfg = yaml.safe_load(prepared_pipeline.read_text())
+    cfg['paths']['unified_root'] = str(config(prepared_pipeline)['output'] / 'CrossSkinNet_Unified_Dataset')
+    output = tmp_path / 'pending'
+    output.mkdir()
+    cfg['paths']['output_root'] = str(output)
+    (output / 'dedup_status.json').write_text(json.dumps({'policy':'review','ready':False}))
+    path = tmp_path / 'config.yaml'
+    path.write_text(yaml.safe_dump(cfg))
+    with pytest.raises(ValueError,match='Duplicate review incomplete'):
+        run(path)
+    assert not (output / 'runs').exists()

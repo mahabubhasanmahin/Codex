@@ -19,6 +19,7 @@ datasets:
     path: /kaggle/input/datasets/spacesurfer/ph2-dataset
     pool: external_test
 dedup:
+  near_duplicate_policy: review
   hamming_threshold: 5
   workers: 4
 metadata:

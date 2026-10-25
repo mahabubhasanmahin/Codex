@@ -14,7 +14,7 @@ from crossskinnet.data.metadata import MODES
 from crossskinnet.eval.metrics import bootstrap_f1, classification_metrics
 from crossskinnet.io import config, read_csv, report, write_csv
 from crossskinnet.train.dataset import SkinDataset
-from crossskinnet.train.engine import batch_forward, make_model, seed_all
+from crossskinnet.train.engine import batch_forward, make_model, seed_all, validate_integrity
 
 
 def predict(model: torch.nn.Module, dataset: SkinDataset, device: torch.device, batch_size: int) -> tuple[np.ndarray, np.ndarray]:
@@ -55,6 +55,7 @@ def run(config_path: Path, checkpoint_path: Path, explainability: bool = True) -
     checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=False)
     classes = checkpoint['classes']
     root = Path(cfg['paths'].get('unified_root') or cfg['output'] / 'CrossSkinNet_Unified_Dataset')
+    validate_integrity(root)
     signature = hashlib.sha256((root / 'metadata.csv').read_bytes()).hexdigest()
     if signature != checkpoint['signature']:
         raise ValueError('Evaluation metadata differs from the training split; use the original dataset')
