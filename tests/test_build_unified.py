@@ -41,3 +41,23 @@ def test_group_splits_and_resize(tmp_path: Path):
         assign_splits([{**rows[0], 'source_dataset':'PH2'}],42)
     with pytest.raises(ValueError, match='at least 3'):
         assign_splits(rows[:2],42)
+
+
+def test_patient_scoped_lesions_do_not_merge_unrelated_patients():
+    """Repeated local lesion numbers are valid only with explicit source scope."""
+    from crossskinnet.data.grouping import assign_groups
+    rows = [dict(image_id=f'PAT_{patient}_1_{image}.png', source_dataset='PAD-UFES-20',
+                 patient_id=f'PAT_{patient}', lesion_id='1', unified_label=label)
+            for patient in range(20) for image, label in enumerate(('a','b'))]
+    schemas = {'PAD-UFES-20': {'grouping': {'lesion_id_scope':'patient',
+                'image_id_prefix_template':'{patient_id}_{lesion_id}_'}}}
+    with pytest.raises(ValueError, match='global lesion ID'):
+        assign_splits(rows,42)
+    split = assign_splits(rows,42,schemas)
+    assert len({r['group_id'] for r in split}) == 20
+    for patient in range(20):
+        assert len({r['split'] for r in split if r['patient_id'] == f'PAT_{patient}'}) == 1
+    with pytest.raises(ValueError, match='requires patient_id'):
+        assign_groups([{**rows[0], 'patient_id':'NaN'}], schemas)
+    with pytest.raises(ValueError, match='prefix'):
+        assign_groups([{**rows[0], 'image_id':'wrong.png'}], schemas)

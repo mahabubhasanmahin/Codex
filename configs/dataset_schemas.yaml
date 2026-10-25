@@ -1,4 +1,5 @@
-# Derived from dataset_inspection.zip. HAM uppercase directories select one copy.
+# Layout: dataset_inspection.zip. PAD grouping: uploaded raw_train_pool.csv, all 2298 filenames match patient_id + lesion_id prefix.
+# PAD bare lesion numbers repeat across patients; patient IDs remain the split unit.
 datasets:
   PAD-UFES-20:
     format: csv
@@ -23,6 +24,9 @@ datasets:
     image_template: PAD-UFES-20/Dataset/{value}
     missing_values:
     - UNK
+    grouping:
+      lesion_id_scope: patient
+      image_id_prefix_template: '{patient_id}_{lesion_id}_'
   ISIC2018:
     format: csv
     metadata_files:

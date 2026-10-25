@@ -22,7 +22,7 @@ These are implemented; real-data training and conclusions remain outstanding.
 - Split ratios approximate 70/15/15 because patient/lesion groups are indivisible.
   Stratified group folds adjust resolution to the number of groups per class.
   Classes with fewer than three independent groups fail rather than leak images.
-  Missing patient IDs are linked to a known patient via the same lesion where possible.
+  For global lesion identifiers, missing patient IDs are linked through a unique known patient where possible. Patient-scoped lesion numbers require a patient ID.
 - Raw patient/lesion identifiers are retained; collisions across sources are
   conservatively grouped. Dermnet has no inspected patient/lesion metadata; its
   image-ID fallback cannot establish biological patient independence. This limits
@@ -69,3 +69,5 @@ claimed. Checkpoint files must be trusted local artifacts (PyTorch pickle loadin
    runtime; it does not guess rows or read lesion/ROI masks as skin images.
 4. Confirm licenses before uploading derived images, and inspect duplicate pairs
    and post-dedup class/source counts before launching real experiments.
+
+See AUDIT_FINDINGS.md for measured ISIC overlap evidence and PAD identifier scope from the uploaded reports.

@@ -12,9 +12,10 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--config', type=Path, default=Path('configs/default.yaml'))
     parser.add_argument('--mapping', type=Path, default=Path('configs/label_mapping.csv'))
+    parser.add_argument('--schemas', type=Path, help='Dataset schemas, including identifier scope; defaults beside --config')
     args = parser.parse_args()
     try:
-        run(args.config, args.mapping)
+        run(args.config, args.mapping, args.schemas)
     except (KeyError, OSError, ValueError) as error:
         parser.exit(2, f'Unified dataset failed: {error}\n')
 

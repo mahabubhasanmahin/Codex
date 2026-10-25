@@ -59,3 +59,6 @@
 | `scripts/00_audit.py` | Mapping-free dataset feasibility audit CLI. |
 | `src/crossskinnet/data/audit.py` | Source/label, metadata and post-duplicate image/group reports. |
 | `tests/test_audit.py` | Offline audit CLI, repeatability and pipeline-isolation checks. |
+| `src/crossskinnet/data/grouping.py` | Explicit patient/global lesion scope and validated patient grouping. |
+| `scripts/00_review_overlap.py` | Exact/perceptual evidence and focused overlap review CLI. |
+| `docs/AUDIT_FINDINGS.md` | Findings and unresolved limitations from the uploaded real-data reports. |

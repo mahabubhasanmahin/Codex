@@ -7,14 +7,17 @@ from collections import Counter
 from pathlib import Path
 from typing import Any
 
+import yaml
 import numpy as np
 from PIL import Image, ImageOps
 from sklearn.model_selection import StratifiedGroupKFold
 
 from crossskinnet.io import config, present, read_csv, report, write_csv
+from crossskinnet.data.grouping import assign_groups
+from crossskinnet.data.merge import read_yaml
 
 
-def assign_splits(rows: list[dict[str, str]], seed: int) -> list[dict[str, Any]]:
+def assign_splits(rows: list[dict[str, str]], seed: int, schemas: dict[str, Any] | None = None) -> list[dict[str, Any]]:
     """Allocate approximately 70/15/15 using stratified, disjoint group folds.
 
     Fewer than 20 independent groups per class reduce the ratio resolution.
@@ -23,20 +26,7 @@ def assign_splits(rows: list[dict[str, str]], seed: int) -> list[dict[str, Any]]
     """
     if any(row['source_dataset'] in ('HAM10000', 'PH2') for row in rows):
         raise ValueError('External data cannot enter development splits')
-    result = []
-    lesion_patients: dict[str, set[str]] = {}
-    for row in rows:
-        if present(row.get('lesion_id')) and present(row.get('patient_id')):
-            lesion_patients.setdefault(row['lesion_id'], set()).add(row['patient_id'])
-    if any(len(values) > 1 for values in lesion_patients.values()):
-        raise ValueError('A lesion is associated with multiple patients; review identifiers')
-    for row in rows:
-        group = next((row[field] for field in ('patient_id', 'lesion_id', 'image_id') if present(row.get(field))), None)
-        if group is None:
-            raise ValueError('Cannot determine group_id: patient_id, lesion_id and image_id are missing')
-        if not present(row.get('patient_id')) and row.get('lesion_id') in lesion_patients:
-            group = next(iter(lesion_patients[row['lesion_id']]))
-        result.append({**row, 'group_id': group})
+    result = assign_groups(rows, schemas)
     labels = np.array([r['unified_label'] for r in result])
     groups = np.array([r['group_id'] for r in result])
     counts = {label: len(set(groups[labels == label])) for label in set(labels)}
@@ -100,7 +90,7 @@ def _plots(rows: list[dict[str, Any]], output: Path) -> None:
         plt.close(figure)
 
 
-def run(config_path: Path, mapping_path: Path) -> Path:
+def run(config_path: Path, mapping_path: Path, schemas_path: Path | None = None) -> Path:
     """Build resized development and external datasets with explicit audit artifacts."""
     cfg = config(config_path)
     output = cfg['output']
@@ -108,7 +98,12 @@ def run(config_path: Path, mapping_path: Path) -> Path:
     raw_train = read_csv(output / 'deduped_train_pool.csv')
     if not raw_train:
         raise ValueError('No training samples remain after deduplication')
-    train = assign_splits(raw_train, int(cfg['seed']))
+    schema_file = schemas_path or config_path.resolve().parent / 'dataset_schemas.yaml'
+    if schemas_path is not None or schema_file.exists():
+        schemas = read_yaml(schema_file)['datasets']
+    else:
+        schemas = {}
+    train = assign_splits(raw_train, int(cfg['seed']), schemas)
     external = read_csv(output / 'metadata_test_pool.csv')
     if any(r['source_dataset'] not in ('HAM10000', 'PH2') for r in external):
         raise ValueError('Non-external dataset found in zero-shot pool')
@@ -119,6 +114,8 @@ def run(config_path: Path, mapping_path: Path) -> Path:
         row['zero_shot_eligible'] = str(row['unified_label'] in train_labels)
     train = _prepare_images(train, destination / 'images')
     external = _prepare_images(external, destination / 'zero_shot')
+    (destination / 'grouping_schema.yaml').write_text(yaml.safe_dump({
+        'datasets': {source: schema.get('grouping', {}) for source, schema in schemas.items()}}))
     write_csv(destination / 'metadata.csv', train)
     write_csv(destination / 'zero_shot.csv', external)
     write_csv(destination / 'label_mapping.csv', read_csv(mapping_path))

@@ -174,3 +174,22 @@ reviewed. Dermnet folder wording alone cannot approve an image-level diagnosis.
 The audit also creates `audit/audit_reports.zip` with the six aggregate report
 files (no image data or row-level raw metadata). Download it from Kaggle's Output
 panel and share it for review.
+
+## Follow-up: inspect exact evidence and non-ISIC perceptual overlap candidates
+
+After the audit, retain its files and attached images, then run:
+
+```python
+!python scripts/00_review_overlap.py --config configs/default.yaml
+```
+
+This does not hash all images again. Inspect audit/overlap_evidence.csv and
+PAD-UFES-20_overlap_review.png / Dermnet_overlap_review.png. The matching *_pairs.csv
+files contain all relevant representative edges; grids sample up to 20 each.
+SHA-equality counts are proven lower bounds from reported edges. Nonzero-distance
+pHash chains do not establish byte-identical images. See AUDIT_FINDINGS.md.
+
+Step 5 can take `--schemas configs/dataset_schemas.yaml` explicitly. Otherwise it
+loads dataset_schemas.yaml beside its config if available. Real PAD grouping now
+validates the uploaded patient/lesion filename prefix and uses patient-scoped
+lesion numbers; bare repeated lesion numbers do not merge unrelated patients.

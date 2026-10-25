@@ -38,7 +38,7 @@ def _group_evidence(rows: list[dict[str, str]]) -> dict[str, int]:
             fallback_images += 1
     return dict(recorded_patients=len(patients), recorded_lesions=len(lesions),
                 split_group_proxies=len(groups), rows_without_patient_or_lesion=fallback_images,
-                conflicting_lesion_patient_links=sum(len(values) > 1 for values in lesion_patients.values()))
+                lesion_numbers_shared_across_patients=sum(len(values) > 1 for values in lesion_patients.values()))
 
 
 def _class_counts(raw: list[dict[str, str]], kept: list[dict[str, str]],
@@ -163,4 +163,62 @@ def run(config_path: Path, schemas_path: Path) -> Path:
     report('Source feasibility', summaries)
     report('Class feasibility', counts)
     print(f'Audit complete: {audit / "REPORT.md"}', flush=True)
+    return audit
+
+
+def overlap_evidence(raw: list[dict[str, str]], pairs: list[dict[str, str]]) -> list[dict[str, Any]]:
+    """Count proven external connectivity in reported edges, not unseen image hashes.
+
+    SHA-only counts are lower bounds: the duplicate report retains representative
+    edges and can omit other exact-equality edges in the same perceptual bucket.
+    """
+    result = []
+    predicates = [('reported_sha256_edges', lambda row: str(row['exact_sha256']).lower() == 'true'),
+                  ('reported_equal_phash_edges', lambda row: int(row['distance']) == 0),
+                  ('all_reported_phash_edges', lambda row: True)]
+    for method, include in predicates:
+        parent: dict[tuple[str, str, str], tuple[str, str, str]] = {}
+
+        def find(node: tuple[str, str, str]) -> tuple[str, str, str]:
+            parent.setdefault(node, node)
+            current = node
+            while parent[current] != current:
+                parent[current] = parent[parent[current]]
+                current = parent[current]
+            return current
+
+        for pair in pairs:
+            if include(pair):
+                nodes = [(pair[f'source_{side}'], pair[f'image_id_{side}'], pair[f'image_path_{side}']) for side in ('a','b')]
+                parent[find(nodes[0])] = find(nodes[1])
+        external = {find(node) for node in list(parent) if node[0] in ('HAM10000','PH2')}
+        counts: Counter = Counter()
+        for row in raw:
+            node = (row['source_dataset'], row['image_id'], row['image_path'])
+            if node in parent and find(node) in external:
+                counts[row['source_dataset']] += 1
+        for source in sorted({row['source_dataset'] for row in raw}):
+            result.append(dict(source_dataset=source, evidence=method, training_images_connected_to_external=counts[source],
+                               interpretation='proven_lower_bound' if method == 'reported_sha256_edges' else 'perceptual_not_byte_equality'))
+    return result
+
+
+def review_overlap(config_path: Path) -> Path:
+    """Reuse the existing audit report to expose exact evidence and targeted grids."""
+    from crossskinnet.data.dedup import save_duplicate_grid
+
+    cfg = config(config_path)
+    audit = cfg['output'] / 'audit'
+    raw = read_csv(cfg['output'] / 'raw_train_pool.csv')
+    pairs = read_csv(audit / 'duplicates_report.csv')
+    evidence = overlap_evidence(raw, pairs)
+    write_csv(audit / 'overlap_evidence.csv', evidence)
+    for source in sorted({r['source_dataset'] for r in raw} - {'ISIC2018'}):
+        selected = [r for r in pairs if r['action'] == 'remove_train_external_overlap'
+                    and source in (r['source_a'], r['source_b'])]
+        write_csv(audit / f'{source}_overlap_pairs.csv', selected, list(pairs[0]) if pairs else
+            ['image_id_a','image_id_b','image_path_a','image_path_b','source_a','source_b','distance','exact_sha256','action'])
+        save_duplicate_grid(selected, audit / f'{source}_overlap_review.png', int(cfg['seed']), count=20)
+        print(f'{source}: {len(selected)} representative component edges; grid samples up to 20, CSV contains all.')
+    report('Reported overlap evidence', evidence)
     return audit

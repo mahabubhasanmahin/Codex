@@ -43,7 +43,7 @@ def run(config_path: Path) -> Path:
     sites.write_text('datasets: {}\n')
     apply_metadata(path, schemas, sites)
     dedup(path)
-    build(path, mapping)
+    build(path, mapping, schemas)
     checkpoint = train(path, 'tiny', epochs=1)
     evaluate(path, checkpoint)
     (directory / 'README.md').write_text('# SYNTHETIC DEMO ONLY\n\n'

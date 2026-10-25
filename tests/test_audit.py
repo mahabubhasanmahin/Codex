@@ -41,7 +41,26 @@ def test_audit_cli_without_mappings(tmp_path: Path):
         assert 'metadata_train_pool.csv' not in archive.namelist()
     assert (audit / 'REPORT.md').exists()
     assert (audit / 'duplicate_pairs.png').exists()
+    from crossskinnet.data.audit import review_overlap
+    review_overlap(root / 'config.yaml')
+    assert (audit / 'overlap_evidence.csv').exists()
+    assert (audit / 'PAD-UFES-20_overlap_review.png').exists()
     first = (audit / 'class_feasibility.csv').read_bytes()
     result = subprocess.run(args, capture_output=True, text=True)
     assert result.returncode == 0, result.stderr
     assert (audit / 'class_feasibility.csv').read_bytes() == first
+
+
+def test_overlap_evidence_distinguishes_exact_and_transitive_edges():
+    """A perceptual chain is not reported as a proven exact external duplicate."""
+    from crossskinnet.data.audit import overlap_evidence
+    raw = [dict(source_dataset='ISIC2018',image_id='a',image_path='a.png'),
+           dict(source_dataset='PAD-UFES-20',image_id='b',image_path='b.png')]
+    pairs = [dict(source_a='ISIC2018',image_id_a='a',image_path_a='a.png',source_b='HAM10000',
+                  image_id_b='c',image_path_b='c.png',distance='0',exact_sha256='True'),
+             dict(source_a='PAD-UFES-20',image_id_a='b',image_path_a='b.png',source_b='ISIC2018',
+                  image_id_b='a',image_path_b='a.png',distance='3',exact_sha256='False')]
+    result = {(r['source_dataset'],r['evidence']): r['training_images_connected_to_external'] for r in overlap_evidence(raw,pairs)}
+    assert result[('ISIC2018','reported_sha256_edges')] == 1
+    assert result[('PAD-UFES-20','reported_sha256_edges')] == 0
+    assert result[('PAD-UFES-20','all_reported_phash_edges')] == 1
