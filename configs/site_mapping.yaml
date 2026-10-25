@@ -1,0 +1,4 @@
+# TODO: run 03_metadata.py inventory, then map each null raw site to one of
+# head_neck, trunk, upper_limb, lower_limb, hands_feet, other, using reviewed anatomy.
+# No raw anatomical equivalences are guessed here.
+datasets: {}
