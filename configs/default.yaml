@@ -1,0 +1,20 @@
+seed: 42
+paths:
+  kaggle_input_root: /kaggle/input
+  output_root: /kaggle/working
+datasets:
+  PAD-UFES-20:
+    path: /kaggle/input/datasets/maxjen/pad-ufes-20
+    pool: train
+  ISIC2018:
+    path: /kaggle/input/datasets/mahabubhasanmahin/isic2018-final
+    pool: train
+  Dermnet:
+    path: /kaggle/input/datasets/shubhamgoel27/dermnet
+    pool: train
+  HAM10000:
+    path: /kaggle/input/datasets/kmader/skin-cancer-mnist-ham10000
+    pool: external_test
+  PH2:
+    path: /kaggle/input/datasets/spacesurfer/ph2-dataset
+    pool: external_test
