@@ -21,3 +21,43 @@ datasets:
 dedup:
   hamming_threshold: 5
   workers: 4
+metadata:
+  age_scale: 100.0
+model:
+  dimension: 64
+  heads: 4
+  backbones:
+    tiny:
+      pretrained: false
+      frozen: false
+    efficientnet:
+      id: efficientnet_b0
+      pretrained: true
+      frozen: false
+    swin:
+      id: swin_tiny_patch4_window7_224
+      pretrained: true
+      frozen: false
+    dinov2:
+      id: facebook/dinov2-small
+      frozen: false
+    dinov3:
+      id: facebook/dinov3-vits16-pretrain-lvd1689m
+      frozen: false
+training:
+  epochs: 30
+  batch_size: 32
+  image_size: 224
+  image_mean: [0.485, 0.456, 0.406]
+  image_std: [0.229, 0.224, 0.225]
+  lr: 0.001
+  backbone_lr_factor: 0.1
+  weight_decay: 0.0001
+  focal_gamma: 2.0
+  image_aux_weight: 0.25
+  mixed_precision: true
+  patience: 7
+  p_field: 0.2
+  p_all: 0.2
+  max_hours: 11
+  cpu_threads: 2
