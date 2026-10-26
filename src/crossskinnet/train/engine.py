@@ -17,7 +17,7 @@ from torch.utils.data import DataLoader
 from crossskinnet.io import config, read_csv, report, write_csv
 from crossskinnet.models.network import CrossSkinNet
 from crossskinnet.train.dataset import SkinDataset
-from crossskinnet.data.sources import validate_source_rows, validate_training_coverage
+from crossskinnet.data.sources import validate_target_labels, validate_source_rows, validate_training_coverage
 
 
 def validate_integrity(root: Path) -> None:
@@ -129,6 +129,7 @@ def run(config_path: Path, backbone: str = 'tiny', epochs: int | None = None,
         group_splits.setdefault(row['group_id'], set()).add(row['split'])
     if any(len(splits) != 1 for splits in group_splits.values()):
         raise ValueError('Patient/lesion group leakage in metadata.csv')
+    validate_target_labels([row for row in rows if row['split']=='train'], cfg, 'Training')
     classes = sorted({r['unified_label'] for r in rows if r['split'] == 'train'})
     if len(classes) < 2:
         raise ValueError('Training requires at least two classes')

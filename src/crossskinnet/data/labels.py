@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from crossskinnet.io import config, read_csv, report, write_csv
-from crossskinnet.data.sources import validate_source_rows
+from crossskinnet.data.sources import validate_target_labels, validate_source_rows
 
 FIELDS = ['source_dataset', 'original_label', 'unified_label', 'coarse_group', 'include', 'notes']
 GROUPS = {'malignant', 'benign', 'inflammatory', 'infectious', 'other'}
@@ -81,6 +81,7 @@ def apply(config_path: Path, mapping_path: Path) -> None:
             print(f'include=False removed {count} {pool} rows: {source} / {label}')
             exclusions.append(dict(pool=pool, source_dataset=source, original_label=label, count=count))
         mapped.append(kept)
+    validate_target_labels(mapped[0], cfg, 'Label harmonization')
     train_labels = {r['unified_label'] for r in mapped[0]}
     for row in mapped[1]:
         row['zero_shot_eligible'] = str(row['unified_label'] in train_labels)

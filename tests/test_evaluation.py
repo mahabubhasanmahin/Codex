@@ -38,3 +38,18 @@ def test_evaluate_cli(trained_pipeline: tuple[Path, Path]):
     assert shap and all(float(r['reconstruction_error']) < 1e-4 for r in shap)
     assert (output / 'explanations/metadata_shap_global.png').exists()
     assert len(read_csv(output.parent / 'backbone_comparison.csv')) == 2
+
+
+def test_external_class_scope_keeps_off_scope_predictions_wrong():
+    """No PH2 BCC support: evaluate supported labels without restricting model argmax."""
+    y = np.array([1,1,2,2])
+    probability = np.array([[.01,.98,.01],[.01,.98,.01],[.01,.01,.98],[.01,.01,.98]])
+    result = classification_metrics(y,probability,['bcc','mel','nevus'],evaluation_labels=[1,2])
+    assert result['macro_f1']==1
+    assert abs(result['macro_f1_all_training_classes']-2/3)<1e-6
+    assert result['evaluated_classes']=='mel|nevus'
+    probability[0]=[.98,.01,.01]
+    assert classification_metrics(y,probability,['bcc','mel','nevus'],evaluation_labels=[1,2])['accuracy']==.75
+    # Fixed supported labels remain in bootstrap scope even when a resample misses one.
+    low,high = bootstrap_f1(y,probability,['a','b','c','d'],42,20,evaluation_labels=[1,2])
+    assert 0<=low<=high<=1

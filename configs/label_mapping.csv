@@ -1,47 +1,47 @@
 source_dataset,original_label,unified_label,coarse_group,include,notes
-Dermnet,Acne and Rosacea Photos,,,True,"TODO: supply reviewed unified_label and coarse_group (malignant/benign/inflammatory/infectious/other), or set include=False with a reason. Observed in dataset_inspection.zip."
-Dermnet,Actinic Keratosis Basal Cell Carcinoma and other Malignant Lesions,,,True,"TODO: supply reviewed unified_label and coarse_group (malignant/benign/inflammatory/infectious/other), or set include=False with a reason. Observed in dataset_inspection.zip."
-Dermnet,Atopic Dermatitis Photos,,,True,"TODO: supply reviewed unified_label and coarse_group (malignant/benign/inflammatory/infectious/other), or set include=False with a reason. Observed in dataset_inspection.zip."
-Dermnet,Bullous Disease Photos,,,True,"TODO: supply reviewed unified_label and coarse_group (malignant/benign/inflammatory/infectious/other), or set include=False with a reason. Observed in dataset_inspection.zip."
-Dermnet,Cellulitis Impetigo and other Bacterial Infections,,,True,"TODO: supply reviewed unified_label and coarse_group (malignant/benign/inflammatory/infectious/other), or set include=False with a reason. Observed in dataset_inspection.zip."
-Dermnet,Eczema Photos,,,True,"TODO: supply reviewed unified_label and coarse_group (malignant/benign/inflammatory/infectious/other), or set include=False with a reason. Observed in dataset_inspection.zip."
-Dermnet,Exanthems and Drug Eruptions,,,True,"TODO: supply reviewed unified_label and coarse_group (malignant/benign/inflammatory/infectious/other), or set include=False with a reason. Observed in dataset_inspection.zip."
-Dermnet,Hair Loss Photos Alopecia and other Hair Diseases,,,True,"TODO: supply reviewed unified_label and coarse_group (malignant/benign/inflammatory/infectious/other), or set include=False with a reason. Observed in dataset_inspection.zip."
-Dermnet,Herpes HPV and other STDs Photos,,,True,"TODO: supply reviewed unified_label and coarse_group (malignant/benign/inflammatory/infectious/other), or set include=False with a reason. Observed in dataset_inspection.zip."
-Dermnet,Light Diseases and Disorders of Pigmentation,,,True,"TODO: supply reviewed unified_label and coarse_group (malignant/benign/inflammatory/infectious/other), or set include=False with a reason. Observed in dataset_inspection.zip."
-Dermnet,Lupus and other Connective Tissue diseases,,,True,"TODO: supply reviewed unified_label and coarse_group (malignant/benign/inflammatory/infectious/other), or set include=False with a reason. Observed in dataset_inspection.zip."
-Dermnet,Melanoma Skin Cancer Nevi and Moles,,,True,"TODO: supply reviewed unified_label and coarse_group (malignant/benign/inflammatory/infectious/other), or set include=False with a reason. Observed in dataset_inspection.zip."
-Dermnet,Nail Fungus and other Nail Disease,,,True,"TODO: supply reviewed unified_label and coarse_group (malignant/benign/inflammatory/infectious/other), or set include=False with a reason. Observed in dataset_inspection.zip."
-Dermnet,Poison Ivy Photos and other Contact Dermatitis,,,True,"TODO: supply reviewed unified_label and coarse_group (malignant/benign/inflammatory/infectious/other), or set include=False with a reason. Observed in dataset_inspection.zip."
-Dermnet,Psoriasis pictures Lichen Planus and related diseases,,,True,"TODO: supply reviewed unified_label and coarse_group (malignant/benign/inflammatory/infectious/other), or set include=False with a reason. Observed in dataset_inspection.zip."
-Dermnet,Scabies Lyme Disease and other Infestations and Bites,,,True,"TODO: supply reviewed unified_label and coarse_group (malignant/benign/inflammatory/infectious/other), or set include=False with a reason. Observed in dataset_inspection.zip."
-Dermnet,Seborrheic Keratoses and other Benign Tumors,,,True,"TODO: supply reviewed unified_label and coarse_group (malignant/benign/inflammatory/infectious/other), or set include=False with a reason. Observed in dataset_inspection.zip."
-Dermnet,Systemic Disease,,,True,"TODO: supply reviewed unified_label and coarse_group (malignant/benign/inflammatory/infectious/other), or set include=False with a reason. Observed in dataset_inspection.zip."
-Dermnet,Tinea Ringworm Candidiasis and other Fungal Infections,,,True,"TODO: supply reviewed unified_label and coarse_group (malignant/benign/inflammatory/infectious/other), or set include=False with a reason. Observed in dataset_inspection.zip."
-Dermnet,Urticaria Hives,,,True,"TODO: supply reviewed unified_label and coarse_group (malignant/benign/inflammatory/infectious/other), or set include=False with a reason. Observed in dataset_inspection.zip."
-Dermnet,Vascular Tumors,,,True,"TODO: supply reviewed unified_label and coarse_group (malignant/benign/inflammatory/infectious/other), or set include=False with a reason. Observed in dataset_inspection.zip."
-Dermnet,Vasculitis Photos,,,True,"TODO: supply reviewed unified_label and coarse_group (malignant/benign/inflammatory/infectious/other), or set include=False with a reason. Observed in dataset_inspection.zip."
-Dermnet,Warts Molluscum and other Viral Infections,,,True,"TODO: supply reviewed unified_label and coarse_group (malignant/benign/inflammatory/infectious/other), or set include=False with a reason. Observed in dataset_inspection.zip."
-HAM10000,akiec,,,True,"TODO: supply reviewed unified_label and coarse_group (malignant/benign/inflammatory/infectious/other), or set include=False with a reason. Observed in dataset_inspection.zip."
-HAM10000,bcc,,,True,"TODO: supply reviewed unified_label and coarse_group (malignant/benign/inflammatory/infectious/other), or set include=False with a reason. Observed in dataset_inspection.zip."
-HAM10000,bkl,,,True,"TODO: supply reviewed unified_label and coarse_group (malignant/benign/inflammatory/infectious/other), or set include=False with a reason. Observed in dataset_inspection.zip."
-HAM10000,df,,,True,"TODO: supply reviewed unified_label and coarse_group (malignant/benign/inflammatory/infectious/other), or set include=False with a reason. Observed in dataset_inspection.zip."
-HAM10000,mel,,,True,"TODO: supply reviewed unified_label and coarse_group (malignant/benign/inflammatory/infectious/other), or set include=False with a reason. Observed in dataset_inspection.zip."
-HAM10000,nv,,,True,"TODO: supply reviewed unified_label and coarse_group (malignant/benign/inflammatory/infectious/other), or set include=False with a reason. Observed in dataset_inspection.zip."
-HAM10000,vasc,,,True,"TODO: supply reviewed unified_label and coarse_group (malignant/benign/inflammatory/infectious/other), or set include=False with a reason. Observed in dataset_inspection.zip."
-ISIC2018,AKIEC,,,False,Excluded from current PAD+HAM development / PH2 external study; ISIC2018 is redundant with HAM10000.
-ISIC2018,BCC,,,False,Excluded from current PAD+HAM development / PH2 external study; ISIC2018 is redundant with HAM10000.
-ISIC2018,BKL,,,False,Excluded from current PAD+HAM development / PH2 external study; ISIC2018 is redundant with HAM10000.
-ISIC2018,DF,,,False,Excluded from current PAD+HAM development / PH2 external study; ISIC2018 is redundant with HAM10000.
-ISIC2018,MEL,,,False,Excluded from current PAD+HAM development / PH2 external study; ISIC2018 is redundant with HAM10000.
-ISIC2018,NV,,,False,Excluded from current PAD+HAM development / PH2 external study; ISIC2018 is redundant with HAM10000.
-ISIC2018,VASC,,,False,Excluded from current PAD+HAM development / PH2 external study; ISIC2018 is redundant with HAM10000.
-PAD-UFES-20,ACK,,,True,"TODO: supply reviewed unified_label and coarse_group (malignant/benign/inflammatory/infectious/other), or set include=False with a reason. Observed in dataset_inspection.zip."
-PAD-UFES-20,BCC,,,True,"TODO: supply reviewed unified_label and coarse_group (malignant/benign/inflammatory/infectious/other), or set include=False with a reason. Observed in dataset_inspection.zip."
-PAD-UFES-20,MEL,,,True,"TODO: supply reviewed unified_label and coarse_group (malignant/benign/inflammatory/infectious/other), or set include=False with a reason. Observed in dataset_inspection.zip."
-PAD-UFES-20,NEV,,,True,"TODO: supply reviewed unified_label and coarse_group (malignant/benign/inflammatory/infectious/other), or set include=False with a reason. Observed in dataset_inspection.zip."
-PAD-UFES-20,SCC,,,True,"TODO: supply reviewed unified_label and coarse_group (malignant/benign/inflammatory/infectious/other), or set include=False with a reason. Observed in dataset_inspection.zip."
-PAD-UFES-20,SEK,,,True,"TODO: supply reviewed unified_label and coarse_group (malignant/benign/inflammatory/infectious/other), or set include=False with a reason. Observed in dataset_inspection.zip."
-PH2,Atypical Nevus,,,True,"TODO: supply reviewed unified_label and coarse_group (malignant/benign/inflammatory/infectious/other), or set include=False with a reason. Observed in dataset_inspection.zip."
-PH2,Common Nevus,,,True,"TODO: supply reviewed unified_label and coarse_group (malignant/benign/inflammatory/infectious/other), or set include=False with a reason. Observed in dataset_inspection.zip."
-PH2,Melanoma,,,True,"TODO: supply reviewed unified_label and coarse_group (malignant/benign/inflammatory/infectious/other), or set include=False with a reason. Observed in dataset_inspection.zip."
+Dermnet,Acne and Rosacea Photos,,,False,Optional source disabled; no image-level disease equivalence approved for the shared-three-class core.
+Dermnet,Actinic Keratosis Basal Cell Carcinoma and other Malignant Lesions,,,False,Optional source disabled; no image-level disease equivalence approved for the shared-three-class core.
+Dermnet,Atopic Dermatitis Photos,,,False,Optional source disabled; no image-level disease equivalence approved for the shared-three-class core.
+Dermnet,Bullous Disease Photos,,,False,Optional source disabled; no image-level disease equivalence approved for the shared-three-class core.
+Dermnet,Cellulitis Impetigo and other Bacterial Infections,,,False,Optional source disabled; no image-level disease equivalence approved for the shared-three-class core.
+Dermnet,Eczema Photos,,,False,Optional source disabled; no image-level disease equivalence approved for the shared-three-class core.
+Dermnet,Exanthems and Drug Eruptions,,,False,Optional source disabled; no image-level disease equivalence approved for the shared-three-class core.
+Dermnet,Hair Loss Photos Alopecia and other Hair Diseases,,,False,Optional source disabled; no image-level disease equivalence approved for the shared-three-class core.
+Dermnet,Herpes HPV and other STDs Photos,,,False,Optional source disabled; no image-level disease equivalence approved for the shared-three-class core.
+Dermnet,Light Diseases and Disorders of Pigmentation,,,False,Optional source disabled; no image-level disease equivalence approved for the shared-three-class core.
+Dermnet,Lupus and other Connective Tissue diseases,,,False,Optional source disabled; no image-level disease equivalence approved for the shared-three-class core.
+Dermnet,Melanoma Skin Cancer Nevi and Moles,,,False,Optional source disabled; no image-level disease equivalence approved for the shared-three-class core.
+Dermnet,Nail Fungus and other Nail Disease,,,False,Optional source disabled; no image-level disease equivalence approved for the shared-three-class core.
+Dermnet,Poison Ivy Photos and other Contact Dermatitis,,,False,Optional source disabled; no image-level disease equivalence approved for the shared-three-class core.
+Dermnet,Psoriasis pictures Lichen Planus and related diseases,,,False,Optional source disabled; no image-level disease equivalence approved for the shared-three-class core.
+Dermnet,Scabies Lyme Disease and other Infestations and Bites,,,False,Optional source disabled; no image-level disease equivalence approved for the shared-three-class core.
+Dermnet,Seborrheic Keratoses and other Benign Tumors,,,False,Optional source disabled; no image-level disease equivalence approved for the shared-three-class core.
+Dermnet,Systemic Disease,,,False,Optional source disabled; no image-level disease equivalence approved for the shared-three-class core.
+Dermnet,Tinea Ringworm Candidiasis and other Fungal Infections,,,False,Optional source disabled; no image-level disease equivalence approved for the shared-three-class core.
+Dermnet,Urticaria Hives,,,False,Optional source disabled; no image-level disease equivalence approved for the shared-three-class core.
+Dermnet,Vascular Tumors,,,False,Optional source disabled; no image-level disease equivalence approved for the shared-three-class core.
+Dermnet,Vasculitis Photos,,,False,Optional source disabled; no image-level disease equivalence approved for the shared-three-class core.
+Dermnet,Warts Molluscum and other Viral Infections,,,False,Optional source disabled; no image-level disease equivalence approved for the shared-three-class core.
+HAM10000,akiec,,,False,Outside the selected shared-three-class task; do not merge SCC with AK/AKIEC or SEK with BKL.
+HAM10000,bcc,basal_cell_carcinoma,malignant,True,"Selected shared-three-class protocol; canonical source-label decoding, not new image annotation. See docs/THREE_CLASS_PROTOCOL.md."
+HAM10000,bkl,,,False,Outside the selected shared-three-class task; do not merge SCC with AK/AKIEC or SEK with BKL.
+HAM10000,df,,,False,Outside the selected shared-three-class task; do not merge SCC with AK/AKIEC or SEK with BKL.
+HAM10000,mel,melanoma,malignant,True,"Selected shared-three-class protocol; canonical source-label decoding, not new image annotation. See docs/THREE_CLASS_PROTOCOL.md."
+HAM10000,nv,melanocytic_nevus,benign,True,"Selected shared-three-class protocol; canonical source-label decoding, not new image annotation. See docs/THREE_CLASS_PROTOCOL.md."
+HAM10000,vasc,,,False,Outside the selected shared-three-class task; do not merge SCC with AK/AKIEC or SEK with BKL.
+ISIC2018,AKIEC,,,False,Disabled redundant source; not part of the current PAD+HAM development protocol.
+ISIC2018,BCC,,,False,Disabled redundant source; not part of the current PAD+HAM development protocol.
+ISIC2018,BKL,,,False,Disabled redundant source; not part of the current PAD+HAM development protocol.
+ISIC2018,DF,,,False,Disabled redundant source; not part of the current PAD+HAM development protocol.
+ISIC2018,MEL,,,False,Disabled redundant source; not part of the current PAD+HAM development protocol.
+ISIC2018,NV,,,False,Disabled redundant source; not part of the current PAD+HAM development protocol.
+ISIC2018,VASC,,,False,Disabled redundant source; not part of the current PAD+HAM development protocol.
+PAD-UFES-20,ACK,,,False,Outside the selected shared-three-class task; do not merge SCC with AK/AKIEC or SEK with BKL.
+PAD-UFES-20,BCC,basal_cell_carcinoma,malignant,True,"Selected shared-three-class protocol; canonical source-label decoding, not new image annotation. See docs/THREE_CLASS_PROTOCOL.md."
+PAD-UFES-20,MEL,melanoma,malignant,True,"Selected shared-three-class protocol; canonical source-label decoding, not new image annotation. See docs/THREE_CLASS_PROTOCOL.md."
+PAD-UFES-20,NEV,melanocytic_nevus,benign,True,"Selected shared-three-class protocol; canonical source-label decoding, not new image annotation. See docs/THREE_CLASS_PROTOCOL.md."
+PAD-UFES-20,SCC,,,False,Outside the selected shared-three-class task; do not merge SCC with AK/AKIEC or SEK with BKL.
+PAD-UFES-20,SEK,,,False,Outside the selected shared-three-class task; do not merge SCC with AK/AKIEC or SEK with BKL.
+PH2,Atypical Nevus,,,False,Conservative protocol exclusion: atypical-nevus equivalence not approved. Keep all raw PH2 images as duplicate references.
+PH2,Common Nevus,melanocytic_nevus,benign,True,"Selected shared-three-class protocol; canonical source-label decoding, not new image annotation. See docs/THREE_CLASS_PROTOCOL.md."
+PH2,Melanoma,melanoma,malignant,True,"Selected shared-three-class protocol; canonical source-label decoding, not new image annotation. See docs/THREE_CLASS_PROTOCOL.md."

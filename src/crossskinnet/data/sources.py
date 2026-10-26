@@ -66,3 +66,18 @@ def validate_training_coverage(rows: list[dict[str, Any]], cfg: dict[str, Any]) 
     if missing:
         raise ValueError(f'Required training sources absent after label/dedup/split: {sorted(missing)}. '
                          'Review dataset availability and labels; do not claim an unrun source.')
+
+
+def validate_target_labels(rows: list[dict[str, Any]], cfg: dict[str, Any], context: str) -> None:
+    """Keep a declared class task fixed rather than silently losing a class."""
+    target = cfg.get('study', {}).get('target_labels')
+    if target is None:
+        return
+    if not isinstance(target, list) or not target or any(not isinstance(label,str) or not label.strip() for label in target):
+        raise ValueError('study.target_labels must be a nonempty list of label names')
+    if len(set(target)) != len(target):
+        raise ValueError('study.target_labels contains duplicate names')
+    actual = {r['unified_label'] for r in rows}
+    if actual != set(target):
+        raise ValueError(f'{context}: target label mismatch; missing={sorted(set(target)-actual)}, '
+                         f'unexpected={sorted(actual-set(target))}. Review mappings/data before training.')

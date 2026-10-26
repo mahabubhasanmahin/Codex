@@ -76,7 +76,8 @@ def run(config_path: Path, checkpoint_path: Path, explainability: bool = True) -
         for mode in MODES:
             dataset = SkinDataset(root, classes, split, inference_cfg, mode=mode)
             targets, probability = predict(model, dataset, device, int(cfg['training']['batch_size']))
-            metric = classification_metrics(targets, probability, classes)
+            evaluation_labels = sorted(set(targets.tolist())) if split=='zero_shot' else None
+            metric = classification_metrics(targets, probability, classes, evaluation_labels=evaluation_labels)
             key = f'{split}_{mode}'
             detailed[key] = metric
             scalar = {k: v for k, v in metric.items() if k not in ('per_class_f1', 'confusion_matrix')}
@@ -90,9 +91,10 @@ def run(config_path: Path, checkpoint_path: Path, explainability: bool = True) -
                 exclusions.extend(dict(source_dataset=r['source_dataset'], image_id=r['image_id'],
                     unified_label=r['unified_label'], reason='no_training_counterpart') for r in excluded)
                 lo, hi = bootstrap_f1(targets, probability, [r['group_id'] for r in dataset.rows],
-                    int(cfg['seed']), int(options.get('bootstrap_repetitions', 1000)))
+                    int(cfg['seed']), int(options.get('bootstrap_repetitions', 1000)), evaluation_labels=evaluation_labels)
                 comparison.append(dict(backbone=checkpoint['backbone'], frozen=checkpoint['frozen'], split=split,
-                    macro_f1=metric['macro_f1'], ci95_low=lo, ci95_high=hi, samples=len(targets),
+                    macro_f1=metric['macro_f1'], evaluated_classes=metric['evaluated_classes'],
+                    macro_f1_all_training_classes=metric['macro_f1_all_training_classes'], ci95_low=lo, ci95_high=hi, samples=len(targets),
                     excluded_samples=dataset.excluded, dataset_signature=signature))
                 if len(targets):
                     _confusion_plot(metric['confusion_matrix'], classes, destination / f'{split}_confusion.png')
@@ -107,7 +109,8 @@ def run(config_path: Path, checkpoint_path: Path, explainability: bool = True) -
                 ['image_id','source_dataset','group_id','actual','predicted',*[f'probability_{label}' for label in classes]])
             for source in sorted({r['source_dataset'] for r in dataset.rows}):
                 indices = np.array([i for i, row in enumerate(dataset.rows) if row['source_dataset'] == source])
-                source_metric = classification_metrics(targets[indices], probability[indices], classes)
+                source_scope = sorted(set(targets[indices].tolist())) if split=='zero_shot' else None
+                source_metric = classification_metrics(targets[indices], probability[indices], classes, evaluation_labels=source_scope)
                 detailed[f'{key}_{source}'] = source_metric
                 summaries.append(dict(split=split, ablation=mode, source_dataset=source,
                     **{k:v for k,v in source_metric.items() if k not in ('per_class_f1','confusion_matrix')}))

@@ -65,3 +65,9 @@
 | `src/crossskinnet/data/sources.py` | Source enable flags, fixed external roles and stale-pool validation. |
 | `tests/test_source_selection.py` | Revised default, absent disabled input and active-only label validation tests. |
 | `docs/REVISED_STUDY.md` | Approved two-source revision, scientific limits and Kaggle steps. |
+| `src/crossskinnet/data/review.py` | Selected-label candidate preparation and atomic per-pair decision persistence. |
+| `src/crossskinnet/data/review_ui.py` | Notebook image-pair panel with explicit decision buttons. |
+| `scripts/04_prepare_review.py` | Mapping and selected-label duplicate-review preview CLI. |
+| `tests/test_selected_review.py` | Canonical mapping, external-reference protection and saved-widget-decision checks. |
+| `docs/THREE_CLASS_PROTOCOL.md` | Exact selected taxonomy, exclusions and source-verification limits. |
+| `notebooks/02_three_class_review.ipynb` | Kaggle bootstrap and interactive duplicate-review workflow. |

@@ -36,6 +36,7 @@ def prepared_pipeline(tmp_path_factory) -> Path:
     schemas_path.write_text(yaml.safe_dump(schemas))
     import shutil
     shutil.copyfile(root / 'HAM10000/images/image_000.png', root / 'PH2/images/image_000.png')
+    cfg['study']['target_labels'] = ['synthetic_class_0','synthetic_class_1','synthetic_class_2']
     cfg['training'].update(epochs=1, image_size=32, batch_size=16, device='cpu')
     cfg['evaluation'].update(bootstrap_repetitions=20, explanations_per_outcome=1, shap_samples=32)
     path.write_text(yaml.safe_dump(cfg))

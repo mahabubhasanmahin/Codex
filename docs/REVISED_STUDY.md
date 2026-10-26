@@ -41,10 +41,12 @@ independence across different lesions when patient IDs are unavailable.
    overlap checks and checkpoints; the current defaults do not implement those
    training experiments automatically.
 
-## Mapping decisions still required
+## Current shared-three-class mapping
 
-The source-role update does not invent medical equivalences. Review PAD and HAM
-source definitions before applying label_mapping.csv. SCC is not AK/AKIEC; PAD
+The selected operational codebook now maps canonical PAD/HAM MEL/BCC/NEV codes
+to melanoma, basal_cell_carcinoma and melanocytic_nevus. See THREE_CLASS_PROTOCOL.md
+for exact spellings, exclusions and source-verification limits. This is not new
+clinical reannotation or independent dermatologist validation. SCC is not AK/AKIEC; PAD
 SEK is not automatically the entire HAM BKL category. PH2 common/atypical nevus
 mapping must be explicit. No clinical or anatomical mapping was auto-approved.
 Dermnet remains disabled; enabling it requires reliable disease-level labels and

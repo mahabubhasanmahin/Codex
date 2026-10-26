@@ -25,9 +25,9 @@ training/calibration → evaluation. Every stage has a thin numbered CLI in scri
 
 `configs/default.yaml` holds seed 42, dataset paths, output root and hyperparameters.
 `configs/dataset_schemas.yaml` derives from the uploaded inspection archive.
-`configs/label_mapping.csv` and `configs/site_mapping.yaml` require reviewed medical
-and anatomical decisions before real-data training; no diagnosis equivalences are
-invented. Their inventory commands preserve edits and print outstanding entries.
+`configs/label_mapping.csv` records the selected three-class operational codebook;
+`configs/site_mapping.yaml` still needs anatomical mappings. Source annotations
+are not re-diagnosed, and unknown clinical equivalences are not invented. Their inventory commands preserve edits and print outstanding entries.
 
 Current development sources: PAD-UFES-20 and HAM10000.
 PH2 is external-only. Dermnet is optional and disabled pending disease-label review;
@@ -70,3 +70,9 @@ source_selection.csv/json, downstream stages reject stale disabled-source rows,
 and the unified dataset README/statistics name the sources actually retained.
 Enabling a source is not clinical approval of its labels: unknown mappings and
 pending duplicate decisions still block training readiness.
+
+Current shared-class task: melanoma, basal_cell_carcinoma, melanocytic_nevus.
+See docs/THREE_CLASS_PROTOCOL.md for exact source mappings and deliberate exclusions.
+For selected-data duplicate review before site normalization, open
+notebooks/02_three_class_review.ipynb. Its explicit per-pair decisions save to CSV;
+no candidate is automatically approved or rejected.

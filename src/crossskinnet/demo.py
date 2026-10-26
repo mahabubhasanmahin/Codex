@@ -27,7 +27,7 @@ def run(config_path: Path) -> Path:
     for section in ('dedup', 'metadata', 'model', 'training', 'evaluation'):
         cfg[section] = base[section]
     if 'study' in base:
-        cfg['study'] = base['study']
+        cfg['study'] = {**base['study'], 'target_labels':['synthetic_class_0','synthetic_class_1','synthetic_class_2']}
     for name, settings in cfg['datasets'].items():
         settings['pool'] = base.get('datasets', {}).get(name, {}).get('pool', settings['pool'])
         settings['enabled'] = base.get('datasets', {}).get(name, {}).get('enabled', True)

@@ -1,6 +1,7 @@
 seed: 42
 study:
   name: pad_ham_external_ph2
+  target_labels: [melanoma, basal_cell_carcinoma, melanocytic_nevus]
   required_training_sources: [PAD-UFES-20, HAM10000]
 paths:
   kaggle_input_root: /kaggle/input

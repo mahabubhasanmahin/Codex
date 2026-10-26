@@ -64,6 +64,9 @@ they do not approve a disease taxonomy or substitute for stages 02–05.
 
 ## 2. Review clinical labels
 
+The committed mapping already selects the three-class core. Inventory preserves
+it. Blank fields on include=False rows do not need invented labels.
+
 ```python
 !python scripts/02_labels.py inventory --config configs/default.yaml
 ```
@@ -182,7 +185,7 @@ PAD/HAM held-out test results are IN-DOMAIN. PH2 alone is external and evaluated
 only for labels present in the trained vocabulary. Its inspected fields are all
 missing, so it uses the validation-calibrated image-only fallback.
 
-Artifacts include per-source metrics/predictions, fixed-vocabulary macro-F1,
+Artifacts include per-source metrics/predictions, explicit-scope macro-F1 (plus a full-vocabulary secondary score),
 per-class F1, confusion matrices, defined-class AUC, ECE, all nine ablation modes,
 group-bootstrap intervals and up to 10 correct/10 wrong Grad-CAM+SHAP examples.
 Unavailable outcomes are reported. SHAP uses field-presence coalitions conditioned
@@ -192,3 +195,16 @@ training-seed uncertainty. Backbone comparison accumulates only completed runs.
 Do not call pooled HAM results zero-shot. PAD-only→HAM or HAM-only→PAD require
 separate study configurations, overlap checks and training runs. They are not
 performed by the default pooled pipeline.
+
+## Current three-class mapping and one-pair-at-a-time review
+
+The current mapping selects melanoma, basal_cell_carcinoma and melanocytic_nevus.
+PH2 Common Nevus/Melanoma are included; Atypical Nevus is conservatively excluded
+from evaluation but retained in ALL raw PH2 overlap references. See
+THREE_CLASS_PROTOCOL.md for the complete mapping, exclusions and provenance limits.
+
+Use notebooks/02_three_class_review.ipynb to bootstrap, merge, prepare selected-label
+candidates and review them with explicit True/False/Unsure buttons. ipywidgets is
+needed only for the interactive notebook UI and is included in requirements.txt.
+This is not a new heavy model dependency. The preparation CLI does not need site
+mappings or pretrained weights and must not be used as a normalized training pool.

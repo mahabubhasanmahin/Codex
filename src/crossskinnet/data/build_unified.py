@@ -14,7 +14,7 @@ from sklearn.model_selection import StratifiedGroupKFold
 
 from crossskinnet.io import config, present, read_csv, report, write_csv
 from crossskinnet.data.grouping import assign_groups
-from crossskinnet.data.sources import validate_source_rows, validate_training_coverage, enabled_sources
+from crossskinnet.data.sources import validate_target_labels, validate_source_rows, validate_training_coverage, enabled_sources
 from crossskinnet.data.merge import read_yaml
 
 
@@ -94,6 +94,8 @@ def _plots(rows: list[dict[str, Any]], output: Path) -> None:
 def run(config_path: Path, mapping_path: Path, schemas_path: Path | None = None) -> Path:
     """Build resized development and external datasets with explicit audit artifacts."""
     cfg = config(config_path)
+    if cfg.get('review_preview_only'):
+        raise ValueError('Review preview is unnormalized; run stages 03 and 04 with the main config before building')
     output = cfg['output']
     destination = output / 'CrossSkinNet_Unified_Dataset'
     status_file = output / 'dedup_status.json'
@@ -118,7 +120,9 @@ def run(config_path: Path, mapping_path: Path, schemas_path: Path | None = None)
         schemas = read_yaml(schema_file)['datasets']
     else:
         schemas = {}
+    validate_target_labels(raw_train, cfg, 'Post-dedup development')
     train = assign_splits(raw_train, int(cfg['seed']), schemas)
+    validate_target_labels([row for row in train if row['split']=='train'], cfg, 'Training split')
     validate_training_coverage([row for row in train if row['split']=='train'], cfg)
     external = read_csv(output / 'metadata_test_pool.csv')
     validate_source_rows(external, cfg, 'test')

@@ -37,7 +37,7 @@ def test_excluded_isic_not_read_and_unused_mapping_not_required(tmp_path: Path):
     path = root / 'config.yaml'
     cfg = yaml.safe_load(path.read_text())
     defaults = yaml.safe_load((REPO / 'configs/default.yaml').read_text())
-    cfg['study'] = defaults['study']
+    cfg['study'] = {**defaults['study'], 'target_labels':['synthetic_class_0','synthetic_class_1','synthetic_class_2']}
     for name, settings in cfg['datasets'].items():
         settings.update(pool=defaults['datasets'][name]['pool'], enabled=defaults['datasets'][name].get('enabled',True))
     cfg['datasets']['Dermnet']['path'] = str(root / 'dermnet_not_attached')
