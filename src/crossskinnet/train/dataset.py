@@ -11,6 +11,7 @@ from torch.utils.data import Dataset
 
 from crossskinnet.data.metadata import apply_random_masking, get_ablation_mask, to_model_inputs
 from crossskinnet.io import read_csv
+from crossskinnet.data.sources import validate_source_rows
 
 
 class SkinDataset(Dataset):
@@ -24,8 +25,7 @@ class SkinDataset(Dataset):
             raise ValueError('Training-time dropout/augmentation is only allowed for the train split')
         rows = read_csv(root / ('zero_shot.csv' if split == 'zero_shot' else 'metadata.csv'))
         selected = [r for r in rows if r['split'] == split]
-        if split != 'zero_shot' and any(r['source_dataset'] in ('HAM10000', 'PH2') for r in selected):
-            raise ValueError('External data leaked into development CSV')
+        validate_source_rows(selected, cfg, 'zero_shot' if split == 'zero_shot' else 'train')
         self.excluded = sum(r['unified_label'] not in classes for r in selected)
         self.rows = [r for r in selected if r['unified_label'] in classes]
         if split != 'zero_shot' and self.excluded:

@@ -14,7 +14,7 @@ from sklearn.model_selection import StratifiedGroupKFold
 
 from crossskinnet.io import config, present, read_csv, report, write_csv
 from crossskinnet.data.grouping import assign_groups
-from crossskinnet.data.sources import validate_source_rows, validate_training_coverage
+from crossskinnet.data.sources import validate_source_rows, validate_training_coverage, enabled_sources
 from crossskinnet.data.merge import read_yaml
 
 
@@ -25,7 +25,7 @@ def assign_splits(rows: list[dict[str, str]], seed: int, schemas: dict[str, Any]
     At least three independent groups per class are required; never fall back
     to an image-level split to make an undersized class appear to work.
     """
-    if any(row['source_dataset'] in ('HAM10000', 'PH2') for row in rows):
+    if any(row['source_dataset'] == 'PH2' for row in rows):
         raise ValueError('External data cannot enter development splits')
     result = assign_groups(rows, schemas)
     labels = np.array([r['unified_label'] for r in result])
@@ -121,10 +121,9 @@ def run(config_path: Path, mapping_path: Path, schemas_path: Path | None = None)
     train = assign_splits(raw_train, int(cfg['seed']), schemas)
     validate_training_coverage([row for row in train if row['split']=='train'], cfg)
     external = read_csv(output / 'metadata_test_pool.csv')
-    if any(r['source_dataset'] not in ('HAM10000', 'PH2') for r in external):
-        raise ValueError('Non-external dataset found in zero-shot pool')
     validate_source_rows(external, cfg, 'test')
     actual_sources = sorted({r['source_dataset'] for r in train})
+    actual_external = sorted({r['source_dataset'] for r in external})
     train_labels = {r['unified_label'] for r in train if r['split'] == 'train'}
     for row in external:
         row['group_id'] = next((row[f] for f in ('patient_id', 'lesion_id', 'image_id') if present(row.get(f))), row['image_id'])
@@ -141,14 +140,14 @@ def run(config_path: Path, mapping_path: Path, schemas_path: Path | None = None)
     (destination / 'dataset_integrity.json').write_text(json.dumps(integrity, indent=2))
     write_csv(destination / 'label_mapping.csv', read_csv(mapping_path))
     counts = Counter((r['split'], r['source_dataset'], r['unified_label']) for r in train + external)
-    stats = {'seed': cfg['seed'], 'actual_development_sources': actual_sources, 'requested_ratios': {'train': .7, 'val': .15, 'test': .15},
+    stats = {'seed': cfg['seed'], 'actual_development_sources': actual_sources, 'actual_external_sources': actual_external, 'requested_ratios': {'train': .7, 'val': .15, 'test': .15},
              'actual_split_counts': dict(Counter(r['split'] for r in train)),
              'note': 'Ratios approximate because patient/lesion groups are indivisible.',
              'zero_shot_excluded_samples': sum(r['zero_shot_eligible'] == 'False' for r in external),
              'counts': [dict(split=s, source_dataset=d, unified_label=l, count=n) for (s, d, l), n in sorted(counts.items())]}
     (destination / 'dataset_stats.json').write_text(json.dumps(stats, indent=2))
     (destination / 'README.md').write_text('# CrossSkinNet Unified Dataset\n\n'
-        f"Actual development sources: {', '.join(actual_sources)}. HAM10000/PH2 are external only.\n"
+        f"Actual development sources: {', '.join(actual_sources)}. External only: {', '.join(actual_external)}.\n"
         'See metadata.csv and zero_shot.csv. Paths are relative to this folder.\n'
         '256x256 RGB JPEGs, quality 95. NaN metadata is not statistically imputed.\n'
         'Group-level splits approximate 70/15/15; see dataset_stats.json.\n'

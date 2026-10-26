@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import tempfile
+import shutil
 from pathlib import Path
 
 import yaml
@@ -28,6 +29,7 @@ def run(config_path: Path) -> Path:
     if 'study' in base:
         cfg['study'] = base['study']
     for name, settings in cfg['datasets'].items():
+        settings['pool'] = base.get('datasets', {}).get(name, {}).get('pool', settings['pool'])
         settings['enabled'] = base.get('datasets', {}).get(name, {}).get('enabled', True)
         settings['exclusion_reason'] = base.get('datasets', {}).get(name, {}).get('exclusion_reason', '')
     cfg['paths']['output_root'] = str(directory / 'outputs')
@@ -36,6 +38,13 @@ def run(config_path: Path) -> Path:
     path = directory / 'config.yaml'
     path.write_text(yaml.safe_dump(cfg, sort_keys=False))
     schemas = inputs / 'dataset_schemas.yaml'
+    schema_data = read_yaml(schemas)
+    schema_data['datasets']['PAD-UFES-20']['columns']['patient_id'] = 'group_id'
+    schema_data['datasets']['PH2']['columns'].pop('age', None)
+    schema_data['datasets']['PH2']['columns'].pop('lesion_id', None)
+    schemas.write_text(yaml.safe_dump(schema_data))
+    if cfg['datasets']['HAM10000']['pool'] == 'train':
+        shutil.copyfile(inputs / 'HAM10000/images/image_000.png', inputs / 'PH2/images/image_000.png')
     merge_datasets(path, schemas)
     mapping = directory / 'label_mapping.csv'
     inventory(path, mapping)

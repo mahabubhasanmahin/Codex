@@ -1,6 +1,6 @@
 # Paper-plan implementation and limits
 
-Current default follows the user-approved PAD + reviewed Dermnet revision; see
+Current default follows the user-approved PAD + HAM development / PH2 external revision; see
 REVISED_STUDY.md. References to the original three-source design below describe
 the PDF plan and historical audit, not a claim that three-source training occurred.
 
@@ -85,3 +85,9 @@ audit previews are explicitly provisional. Stage 05 validates the readiness file
 review-file fingerprint and verified pool fingerprint. Training/evaluation require
 a built dataset integrity manifest; old derived datasets must be rebuilt. A changed
 review file requires stage 04 again, even if only notes were changed.
+
+
+The latest protocol makes HAM a DEVELOPMENT source. Earlier descriptions of HAM
+as external-only refer to the original/previous plans and historical audits.
+Current source selection and leakage rules are authoritative in REVISED_STUDY.md.
+No pooled HAM result can be labeled zero-shot; external predictions default to PH2.

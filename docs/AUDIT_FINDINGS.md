@@ -1,5 +1,9 @@
 # Findings from the uploaded real-data audit
 
+These are HISTORICAL results from the HAM-external protocol. The current protocol
+uses PAD+HAM development and PH2-only external; do not apply these historical
+HAM-overlap removals to the new training pool. See REVISED_STUDY.md.
+
 > Correction after reviewing the targeted grids: the old pHash-only removal policy
 > was too aggressive. The removed counts below describe that historical run, not
 > confirmed duplicate counts or a training-ready dataset. Current code removes

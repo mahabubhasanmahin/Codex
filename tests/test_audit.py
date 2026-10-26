@@ -60,7 +60,7 @@ def test_overlap_evidence_distinguishes_exact_and_transitive_edges():
                   image_id_b='c',image_path_b='c.png',distance='0',exact_sha256='True'),
              dict(source_a='PAD-UFES-20',image_id_a='b',image_path_a='b.png',source_b='ISIC2018',
                   image_id_b='a',image_path_b='a.png',distance='3',exact_sha256='False')]
-    result = {(r['source_dataset'],r['evidence']): r['training_images_connected_to_external'] for r in overlap_evidence(raw,pairs)}
+    result = {(r['source_dataset'],r['evidence']): r['training_images_connected_to_external'] for r in overlap_evidence(raw,pairs,{'HAM10000','PH2'})}
     assert result[('ISIC2018','reported_sha256_edges')] == 1
     assert result[('PAD-UFES-20','reported_sha256_edges')] == 0
     assert result[('PAD-UFES-20','all_reported_phash_edges')] == 1

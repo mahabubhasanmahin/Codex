@@ -29,13 +29,13 @@ HAM10000,df,,,True,"TODO: supply reviewed unified_label and coarse_group (malign
 HAM10000,mel,,,True,"TODO: supply reviewed unified_label and coarse_group (malignant/benign/inflammatory/infectious/other), or set include=False with a reason. Observed in dataset_inspection.zip."
 HAM10000,nv,,,True,"TODO: supply reviewed unified_label and coarse_group (malignant/benign/inflammatory/infectious/other), or set include=False with a reason. Observed in dataset_inspection.zip."
 HAM10000,vasc,,,True,"TODO: supply reviewed unified_label and coarse_group (malignant/benign/inflammatory/infectious/other), or set include=False with a reason. Observed in dataset_inspection.zip."
-ISIC2018,AKIEC,,,False,Excluded source in user-approved revised study: current ISIC2018 overlaps HAM10000 external references.
-ISIC2018,BCC,,,False,Excluded source in user-approved revised study: current ISIC2018 overlaps HAM10000 external references.
-ISIC2018,BKL,,,False,Excluded source in user-approved revised study: current ISIC2018 overlaps HAM10000 external references.
-ISIC2018,DF,,,False,Excluded source in user-approved revised study: current ISIC2018 overlaps HAM10000 external references.
-ISIC2018,MEL,,,False,Excluded source in user-approved revised study: current ISIC2018 overlaps HAM10000 external references.
-ISIC2018,NV,,,False,Excluded source in user-approved revised study: current ISIC2018 overlaps HAM10000 external references.
-ISIC2018,VASC,,,False,Excluded source in user-approved revised study: current ISIC2018 overlaps HAM10000 external references.
+ISIC2018,AKIEC,,,False,Excluded from current PAD+HAM development / PH2 external study; ISIC2018 is redundant with HAM10000.
+ISIC2018,BCC,,,False,Excluded from current PAD+HAM development / PH2 external study; ISIC2018 is redundant with HAM10000.
+ISIC2018,BKL,,,False,Excluded from current PAD+HAM development / PH2 external study; ISIC2018 is redundant with HAM10000.
+ISIC2018,DF,,,False,Excluded from current PAD+HAM development / PH2 external study; ISIC2018 is redundant with HAM10000.
+ISIC2018,MEL,,,False,Excluded from current PAD+HAM development / PH2 external study; ISIC2018 is redundant with HAM10000.
+ISIC2018,NV,,,False,Excluded from current PAD+HAM development / PH2 external study; ISIC2018 is redundant with HAM10000.
+ISIC2018,VASC,,,False,Excluded from current PAD+HAM development / PH2 external study; ISIC2018 is redundant with HAM10000.
 PAD-UFES-20,ACK,,,True,"TODO: supply reviewed unified_label and coarse_group (malignant/benign/inflammatory/infectious/other), or set include=False with a reason. Observed in dataset_inspection.zip."
 PAD-UFES-20,BCC,,,True,"TODO: supply reviewed unified_label and coarse_group (malignant/benign/inflammatory/infectious/other), or set include=False with a reason. Observed in dataset_inspection.zip."
 PAD-UFES-20,MEL,,,True,"TODO: supply reviewed unified_label and coarse_group (malignant/benign/inflammatory/infectious/other), or set include=False with a reason. Observed in dataset_inspection.zip."

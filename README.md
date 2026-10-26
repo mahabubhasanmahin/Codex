@@ -29,8 +29,9 @@ training/calibration → evaluation. Every stage has a thin numbered CLI in scri
 and anatomical decisions before real-data training; no diagnosis equivalences are
 invented. Their inventory commands preserve edits and print outstanding entries.
 
-Revised development sources: PAD-UFES-20 and label-reviewed Dermnet.
-Current overlapping ISIC2018 is disabled by default; it need not be attached. External only: HAM10000 and PH2.
+Current development sources: PAD-UFES-20 and HAM10000.
+PH2 is external-only. Dermnet is optional and disabled pending disease-label review;
+current ISIC2018 is disabled. Only PAD, HAM and PH2 must be attached.
 Verified duplicates touching external data are removed from training, never from
 external pools. pHash candidates require explicit review; hash similarity alone
 does not remove images. Pending relevant reviews block dataset build/training. Matching ISIC/HAM IDs in the inventory signal potentially severe overlap;
@@ -62,9 +63,9 @@ No medical equivalences are inferred and no training is started. See the Kaggle
 guide for displaying/sharing the reports; these raw audit pools are not training-ready.
 
 
-The user-approved two-source revision is documented in docs/REVISED_STUDY.md.
+The user-approved PAD/HAM + PH2 revision is documented in docs/REVISED_STUDY.md.
 `enabled: false` skips a development dataset before accessing its filesystem.
-External HAM10000/PH2 roles are fixed and cannot be disabled. Merge saves
+PH2 must remain enabled/external; current required development sources are PAD/HAM. Merge saves
 source_selection.csv/json, downstream stages reject stale disabled-source rows,
 and the unified dataset README/statistics name the sources actually retained.
 Enabling a source is not clinical approval of its labels: unknown mappings and

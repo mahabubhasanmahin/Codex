@@ -72,7 +72,7 @@ def test_phash_collision_requires_review_and_blocks_stale_pool(tmp_path: Path):
     Image.new('RGB',(16,16),'red').save(first)
     Image.new('RGB',(16,16),'blue').save(second)
     train = dict(image_id='a',image_path=str(first),source_dataset='PAD-UFES-20')
-    external = dict(image_id='b',image_path=str(second),source_dataset='HAM10000')
+    external = dict(image_id='b',image_path=str(second),source_dataset='PH2')
     write_csv(output / 'metadata_train_pool.csv',[train])
     write_csv(output / 'raw_test_pool.csv',[external])
     (output / 'deduped_train_pool.csv').write_text('stale old output\n')

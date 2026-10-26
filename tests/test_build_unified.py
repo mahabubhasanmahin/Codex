@@ -26,7 +26,7 @@ def test_group_splits_and_resize(tmp_path: Path):
     import hashlib, json
     (output / 'dedup_status.json').write_text(json.dumps(dict(policy='review',ready=True,
         train_pool_sha256=hashlib.sha256((output / 'deduped_train_pool.csv').read_bytes()).hexdigest())))
-    write_csv(output / 'metadata_test_pool.csv', [{**rows[0], 'source_dataset':'HAM10000', 'unified_label':'unseen'}])
+    write_csv(output / 'metadata_test_pool.csv', [{**rows[0], 'source_dataset':'PH2', 'unified_label':'unseen'}])
     mapping = tmp_path / 'mapping.csv'
     write_csv(mapping, [{'unified_label':'a'}])
     cfg = tmp_path / 'config.yaml'

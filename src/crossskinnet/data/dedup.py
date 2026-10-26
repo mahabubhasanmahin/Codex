@@ -180,8 +180,6 @@ def run(config_path: Path, allow_pending: bool = False) -> None:
     external = read_csv(reference if reference.exists() else output / 'metadata_test_pool.csv')
     if not train:
         raise ValueError('Training pool is empty')
-    if any(r['source_dataset'] in ('HAM10000', 'PH2') for r in train):
-        raise ValueError('External data found in training pool')
     validate_source_rows(train, cfg, 'train')
     validate_source_rows(external, cfg, 'test')
     rows = train + external
@@ -275,7 +273,7 @@ def run(config_path: Path, allow_pending: bool = False) -> None:
                      else 'training_duplicate_component'} for index in sorted(removed)]
     write_csv(output / 'removed_training_duplicates.csv', removed_rows, [*train[0],'removal_reason'])
     write_csv(output / 'ham_lesion_groups.csv', [dict(image_id=r['image_id'],lesion_id=r.get('lesion_id','NaN'))
-        for r in external if r['source_dataset']=='HAM10000'], ['image_id','lesion_id'])
+        for r in rows if r['source_dataset']=='HAM10000'], ['image_id','lesion_id'])
     save_duplicate_grid(pairs, output / 'duplicate_pairs.png', int(cfg['seed']))
     save_duplicate_grid([pair for pair in pairs if pair['action']=='review_pending'],
                         output / 'near_duplicate_review.png', int(cfg['seed']))

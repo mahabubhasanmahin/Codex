@@ -124,8 +124,6 @@ def run(config_path: Path, backbone: str = 'tiny', epochs: int | None = None,
     validate_training_coverage([row for row in rows if row['split']=='train'], cfg)
     group_splits: dict[str, set[str]] = {}
     for row in rows:
-        if row['source_dataset'] not in ('PAD-UFES-20', 'ISIC2018', 'Dermnet'):
-            raise ValueError('Non-development source found in metadata.csv')
         if row['split'] not in ('train', 'val', 'test'):
             raise ValueError(f"Invalid development split {row['split']}")
         group_splits.setdefault(row['group_id'], set()).add(row['split'])

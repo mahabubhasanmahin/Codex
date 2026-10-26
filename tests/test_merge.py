@@ -75,11 +75,11 @@ def test_missing_column_and_wrong_pool_fail(tmp_path: Path) -> None:
     config_path = root / "config.yaml"
     schemas_path = root / "dataset_schemas.yaml"
     config = yaml.safe_load(config_path.read_text())
-    config["datasets"]["HAM10000"]["pool"] = "train"
+    config["datasets"]["PH2"]["pool"] = "train"
     config_path.write_text(yaml.safe_dump(config))
     with pytest.raises(ValueError, match="pool must be external_test"):
         merge_datasets(config_path, schemas_path)
-    config["datasets"]["HAM10000"]["pool"] = "external_test"
+    config["datasets"]["PH2"]["pool"] = "external_test"
     config_path.write_text(yaml.safe_dump(config))
     schemas = yaml.safe_load(schemas_path.read_text())
     schemas["datasets"]["PAD-UFES-20"]["columns"]["age"] = "nonexistent"

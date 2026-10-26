@@ -1,51 +1,58 @@
-# User-approved study revision: PAD + reviewed Dermnet
+# Current approved study: PAD + HAM development, PH2 external
 
-The original PDF proposed PAD-UFES-20 + ISIC + Dermnet for development and
-HAM10000/PH2 for external testing. The user approved excluding the currently
-attached overlapping ISIC2018 copy. This is a documented data-design revision;
-it is not an assertion that the original three-source experiment was completed.
+The latest user-approved design supersedes the original PDF's three-source
+proposal and the interim PAD+Dermnet/HAM+PH2 protocol. The title remains
+CrossSkinNet: Explainable Multimodal Skin Disease Classification Under Missing
+Metadata. The dataset-role change must be described in the manuscript.
 
-## Active source configuration
+|Source|Current role|Enabled by default|Grouping|
+|---|---|---|---|
+|PAD-UFES-20|Development|True|patient_id|
+|HAM10000|Development|True|lesion_id|
+|PH2|External test/reference only|Always True|Image identifier; no inspected patient/lesion IDs|
+|Dermnet|Optional reviewed image-only development|False|Image fallback; patient independence unverified|
+|ISIC2018|Excluded|False|Not used in current experiments|
 
-|Source|Role|Default enabled|
-|---|---|---|
-|PAD-UFES-20|Development, multimodal|True|
-|Dermnet|Development, reviewed disease labels only|True|
-|Current ISIC2018 copy|Excluded; overlaps external references|False|
-|HAM10000|External test/reference only|Always True|
-|PH2|External test/reference only|Always True|
+Both PAD and HAM must survive into the actual training split. Each contributes
+images and observed age/sex/site, with symptoms available only in PAD. Metadata
+is never statistically imputed. HAM lesion grouping is not proof of patient-level
+independence across different lesions when patient IDs are unavailable.
 
-ISIC2018's path/schema remain available for reproducing historical audits, not
-for the revised default training run. The disabled source is never opened by
-merge; it need not remain attached on Kaggle. HAM/PH2 cannot be disabled or moved
-into development. All raw external images protect against overlap, even if their
-labels are later excluded from evaluation.
+## Leakage and evaluation rules
 
-## What changes and what stays
+1. PH2 images never enter training, validation, class weighting, early stopping or
+   temperature calibration. All raw PH2 images remain overlap references, even if
+   a PH2 diagnosis is excluded from the final evaluation taxonomy.
+2. Remove SHA-exact or human-confirmed PH2 duplicates from development. Generate
+   pHash candidates at the configured radius but do not auto-remove hash collisions.
+   Pending relevant reviews block final dataset construction and training.
+3. Within PAD+HAM development, verified duplicate components keep the best-metadata
+   training-pool row before splitting. A PAD-HAM duplicate is an INTERNAL duplicate
+   in this protocol, not an external-overlap removal.
+4. Group by recorded PAD patient IDs and HAM lesion IDs before approximate 70/15/15
+   splitting. The source schemas explicitly require those fields; missing required
+   identifiers fail rather than falling back to image-level groups.
+5. The pooled PAD+HAM model has in-domain test results for both sources. Do not call
+   its HAM test results zero-shot. PH2 is the only external source by default,
+   limited to compatible reviewed disease labels. Its inspected data has no model
+   metadata, so its predictions use the calibrated image-only fallback.
+6. PAD-only→HAM and HAM-only→PAD experiments are separate study protocols, not
+   results from the pooled run. They require separate source roles, vocabulary,
+   overlap checks and checkpoints; the current defaults do not implement those
+   training experiments automatically.
 
-- The architecture, four-backbone comparison, missingness experiments,
-  validation-only calibration, explanations and held-out/external testing stay.
-- The dataset plan changes from three proposed sources to two configured sources.
-  Methods/results must report actual retained sources and counts after filtering.
-- Dermnet ingestion still reads all configured folders for transparent inventory.
-  It does not approve mixed/broad folder names as specific diseases. Label mapping
-  is an independent review step and remains unfilled where decisions are unknown.
-- No clinical mappings or anatomical site mappings were automatically invented.
-  The default study requires both PAD and Dermnet in the actual training split;
-  build/train fail if one disappears after label selection or deduplication.
-  A future training run can only claim PAD+Dermnet if reviewed labels from both
-  actually survive. The generated README/statistics name actual retained sources.
-- Dermnet lacks inspected patient/lesion identifiers. Its image-ID fallback does
-  not establish patient independence; the limitation must appear in the paper.
-- Source-dependent metadata availability can confound classification. Compare
-  image-only and multimodal baselines and report per-source results explicitly.
-- Old provisional counts and pending-review totals belong to the earlier input
-  pool. Rerun merge/audit and downstream stages; do not reuse old derived artifacts
-  or checkpoints as revised-study results.
+## Mapping decisions still required
 
-## Kaggle commands
+The source-role update does not invent medical equivalences. Review PAD and HAM
+source definitions before applying label_mapping.csv. SCC is not AK/AKIEC; PAD
+SEK is not automatically the entire HAM BKL category. PH2 common/atypical nevus
+mapping must be explicit. No clinical or anatomical mapping was auto-approved.
+Dermnet remains disabled; enabling it requires reliable disease-level labels and
+acknowledging that image-ID grouping does not establish patient independence.
 
-From the repository root:
+## Reproduce the current setup on Kaggle
+
+Attach PAD-UFES-20, HAM10000 and PH2. ISIC and Dermnet are not required.
 
 ```python
 import subprocess, sys
@@ -55,13 +62,17 @@ subprocess.run([sys.executable,'scripts/00_audit.py',
                 '--schemas','configs/dataset_schemas.yaml'], check=True)
 ```
 
-The audit refreshes merge and writes only provisional data until duplicate review
-is complete. Inspect source_selection.csv: PAD/Dermnet are enabled, ISIC2018 is
-excluded with its reason, and HAM/PH2 remain external. Then use stages 02–07 from
-RUN_ON_KAGGLE.md after disease/site mapping and relevant duplicate decisions.
+The audit merges the actual attached data and writes provisional counts and
+metadata/label-review reports. source_selection.csv records PAD/HAM development,
+PH2 external and the two disabled sources. Then follow stages 02–07 after medical
+label/site review and relevant duplicate decisions. Raw ISIC or historical
+HAM-external counts must not be reused as current-protocol results.
 
-Existing unused ISIC mapping rows can remain in the editable CSV. They do not
-need invented values when their labels are absent from both active pools. Stale
-raw/labeled/normalized/unified training tables containing ISIC are rejected under
-the revised configuration. Use a new output_root for new experiments if you need
-to retain a previous experiment; no checkpoint/run directory is silently replaced.
+Use a fresh output_root if retaining historical artifacts. Old tables with HAM in
+raw_test_pool.csv are rejected under the current configuration. Previously built
+models are not converted by changing config: regenerate pools/splits and train new
+checkpoints. Final dataset README/statistics list the actual retained sources.
+
+Historical fixtures explicitly configure legacy roles for regression testing.
+They never change the current default roles or imply that historical experiments
+were performed on real medical data.

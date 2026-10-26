@@ -1,248 +1,194 @@
-# Run CrossSkinNet on Kaggle
+# Current Kaggle workflow: PAD + HAM development, PH2 external
 
-Start with the synthetic notebook, `notebooks/CrossSkinNet_Kaggle.ipynb`. It needs
-no medical dataset or mapping decisions. Its random-data metrics are not thesis
-results. The commands below assume your shell/notebook is in the repository root.
+Use PAD-UFES-20 and HAM10000 for development. PH2 is the external-only test and
+overlap reference. Dermnet is optional/disabled pending disease-label review;
+ISIC2018 is disabled and not required. Collection membership does not attach data:
+use **Add Input** in the notebook to attach the three active datasets.
 
-## 0. Get the implementation and dependencies
+This changes the original PDF's data roles. See REVISED_STUDY.md. Historical
+HAM-external audit counts/checkpoints are not current-protocol results.
 
-This task creates local Git commits; it does not push them to GitHub. Use the
-provided implementation ZIP, or push these commits before cloning `main` below.
-Uploading the ZIP as a private Kaggle Dataset and extracting it into writable
-working storage is an alternative to cloning. Use its actual attached path.
+## 0. Code, dependencies and optional synthetic smoke
 
 ```python
 !git clone https://github.com/mahabubhasanmahin/Codex.git
 %cd Codex
 !python -m pip install -r requirements.txt
+!python -m pytest -q
 ```
 
-Kaggle normally already has PyTorch/torchvision. Keep those versions compatible.
-Torch is for training, timm/transformers for real backbones, ImageHash for pHash,
-and SHAP/grad-cam for the planned explanations. Installation can use Internet;
-tests and the tiny demo do not download weights.
+If the checkout already exists, enter its actual directory and use
+`git pull --ff-only origin main` instead of cloning again. Preserve any local
+config/mapping edits if Git reports a conflict; do not reset them blindly.
+Internet is needed for installation, cloning and uncached pretrained weights.
+Tests and the tiny demo do not request pretrained weights.
 
 ```python
-!pytest -q
 !python scripts/00_smoke.py --config configs/default.yaml
 ```
 
-Look for `SYNTHETIC DEMO ONLY. Complete artifacts: ...` in the output. Open that
-folder's `outputs/results/tiny_finetuned/` for plots, metrics and explanations.
-Every demo uses a new directory under configured output_root; real mappings stay
-unchanged. You do not need a GPU for this short demo.
+The demo writes a fresh SYNTHETIC_DEMO folder under configured output_root,
+including all stages, tiny training, metrics, plots, Grad-CAM and SHAP. It uses
+PAD patient proxies, HAM lesion proxies and PH2 all-missing metadata. A synthetic
+HAM/PH2 duplicate checks external priority. Its metrics are not thesis results.
 
-## 1. Merge the real datasets
+## 1. Inspect mounts and merge real data
 
-Attach all five sources at the configured paths. Enable a single GPU for later
-training. Inspect `configs/default.yaml` and adjust only to actual mount paths.
+```python
+from pathlib import Path
+import yaml
+cfg = yaml.safe_load(Path('configs/default.yaml').read_text())
+for name, settings in cfg['datasets'].items():
+    if settings.get('enabled', True):
+        print(name, settings['pool'], Path(settings['path']).exists(), settings['path'])
+```
+
+If a path is absent, inspect the actual Kaggle mount and edit its config value;
+do not guess a folder layout or change disease column mappings to bypass an error.
 
 ```python
 !python scripts/01_merge.py --config configs/default.yaml --schemas configs/dataset_schemas.yaml
 ```
 
-## 2. Inventory and review labels, then apply
+Expected raw_train_pool.csv sources: PAD-UFES-20 and HAM10000.
+Expected raw_test_pool.csv source: PH2 only. Check source_selection.csv/json.
+For a pre-taxonomy feasibility audit instead, the following refreshes merge too:
+
+```python
+!python scripts/00_audit.py --config configs/default.yaml --schemas configs/dataset_schemas.yaml
+```
+
+Share output_root/audit/audit_reports.zip to review aggregate counts and metadata.
+Audit pools/counts are provisional when relevant perceptual decisions are pending;
+they do not approve a disease taxonomy or substitute for stages 02–05.
+
+## 2. Review clinical labels
 
 ```python
 !python scripts/02_labels.py inventory --config configs/default.yaml
 ```
 
-Review `configs/label_mapping.csv`. Supply unified_label and coarse_group for
-included entries, or set include=False with a reason. Unknown/ambiguous medical
-mappings fail explicitly. Inventory preserves your edits.
+Fill unified_label/coarse_group for included active source labels in
+configs/label_mapping.csv, or set include=False with a reason. Inventory preserves
+edits. Inactive ISIC/Dermnet mapping rows do not need invented values.
+SCC is not AK/AKIEC; PAD SEK is not automatically the entire HAM BKL category.
+PH2 common/atypical-nevus equivalence must be explicitly reviewed.
 
 ```python
 !python scripts/02_labels.py apply --config configs/default.yaml
 ```
 
-## 3. Inventory and review sites, then normalize metadata
+External classes without development counterparts are flagged. All raw PH2 images
+still remain duplicate references, including excluded external disease labels.
+
+## 3. Normalize metadata after site review
 
 ```python
 !python scripts/03_metadata.py inventory --config configs/default.yaml
 ```
 
-Map each null raw site in `configs/site_mapping.yaml` to an allowed anatomical
-group, then run:
+Map every null raw anatomical site in configs/site_mapping.yaml to one allowed
+group: head_neck, trunk, upper_limb, lower_limb, hands_feet or other.
 
 ```python
 !python scripts/03_metadata.py apply --config configs/default.yaml
 ```
 
-## 4. Remove duplicate training images
+Age/sex/site are not statistically imputed. Symptoms absent in HAM and all model
+metadata absent in inspected PH2 remain structurally missing with explicit masks.
+
+## 4. Verify duplicate candidates
 
 ```python
 !python scripts/04_dedup.py --config configs/default.yaml
 ```
 
-Inspect duplicates_report.csv, removed_training_duplicates.csv and duplicate_pairs.png.
-ISIC/HAM verified overlap may remove most/all ISIC training images; report that honestly.
-If stage 04 reports pending pHash reviews, it is intentionally not ready. Review
-near_duplicate_reviews.csv as described below, then rerun stage 04.
-External pools are never pruned to retain training copies.
+SHA256-equal images are grouped automatically. pHash radius (default 5) generates
+candidates only, even at distance zero. Review each relevant candidate in
+output_root/near_duplicate_reviews.csv: set is_duplicate to True/False with notes;
+leave uncertain pairs blank. Do not mark all candidates True/False to bypass review.
+Decisions are bound to content hashes and are reused by audits and stage 04.
 
-## 5. Build the unified dataset
+PH2-overlap removes the DEVELOPMENT copy, never PH2. Verified PAD/HAM duplicates
+are internal pool duplicates and keep the best-metadata copy. Unresolved relevant
+pairs or conflicting decisions intentionally block readiness. Inspect the review
+grid and full candidate/report CSV; a grid samples at most 20 pairs.
 
 ```python
-!python scripts/05_build_unified.py --config configs/default.yaml
+!python scripts/00_review_overlap.py --config configs/default.yaml
 ```
 
-Inspect dataset_stats.json and class-distribution plots in
-`<output_root>/CrossSkinNet_Unified_Dataset/`. See upload_to_kaggle.md for private
-hosting and paths.unified_root when reusing the derived dataset.
+That helper reads existing audit reports and creates focused review outputs; it
+is optional and does not approve any candidate. After decisions, rerun stage 04.
+Its dedup_status.json must report ready=true before stage 05. Old pool files cannot
+bypass a new pending status. A changed review file requires stage 04 again.
 
-## 6. Train
+## 5. Export images and group splits
 
-First check tiny model execution; it is not a scientific backbone comparison.
+```python
+!python scripts/05_build_unified.py --config configs/default.yaml --schemas configs/dataset_schemas.yaml
+```
+
+PAD requires patient_id; HAM requires lesion_id. Missing required identifiers fail
+rather than silently splitting by image. Approximate train/val/test = 70/15/15;
+unequal groups limit exact ratios. HAM is lesion-disjoint, not necessarily patient-
+disjoint across different lesions when patient IDs are unavailable.
+
+Inspect CrossSkinNet_Unified_Dataset/metadata.csv, zero_shot.csv, grouping_schema.yaml,
+dataset_stats.json and distribution plots. Both PAD/HAM must occur in the actual
+training split. PH2 goes only to zero_shot.csv. The dataset integrity manifest binds
+CSV contents; do not manually alter split rows after building.
+See upload_to_kaggle.md for private reuse via paths.unified_root.
+
+## 6. Train on a single GPU
+
+First verify execution, not scientific performance:
 
 ```python
 !python scripts/06_train.py --config configs/default.yaml --backbone tiny --epochs 1
 ```
 
-Real backbone examples (separate runs; retain the identical dataset and schedule):
+Real example (configured 30-epoch schedule, time-budget stop and early stopping):
 
 ```python
 !python scripts/06_train.py --config configs/default.yaml --backbone efficientnet --frozen
 !python scripts/06_train.py --config configs/default.yaml --backbone efficientnet --no-frozen
 ```
 
-Repeat for `swin`, `dinov2`, `dinov3`. Accept DINOv3's model license and supply
-HF_TOKEN through Kaggle secrets/environment, never in a committed file. IDs are
-configured in YAML. Pretrained downloads require Internet or a supported local
-model cache/path. Prefer one backbone/mode per 12-hour session and retain its
-entire run directory before ending the session; each epoch is checkpointed.
+Repeat for swin, dinov2 and dinov3 with the identical prepared split. Model IDs are
+in YAML. Accept gated DINOv3 license terms and provide HF_TOKEN securely through
+Kaggle secrets/environment; never commit it. Keep torch/torchvision compatible.
+Pretrained/CUDA performance is not validated by the offline tiny tests.
 
-Resume uses the same config/backbone/frozen flags, adding the actual last.pt path:
+Use one backbone/mode per session if needed. Keep its whole run directory;
+checkpoints save every completed epoch. Resume with the same config, backbone,
+frozen flag and epoch schedule plus `--resume` pointing to the actual last.pt.
+The configured time limit is checked after an epoch, so allow a margin for epoch
+length and calibration. Completed runs are not silently overwritten.
 
-```python
-# ckpt is the Path to last.pt in your persisted run directory.
-import subprocess, sys
-subprocess.run([sys.executable, 'scripts/06_train.py', '--config', 'configs/default.yaml',
-                '--backbone', 'efficientnet', '--frozen', '--resume', str(ckpt)], check=True)
-```
+For multiple training seeds, prepare the split once. Reuse the same paths.unified_root,
+vary seed in separate configs, and use distinct output_root values. Do not regenerate
+a different dataset split per backbone. This is not an automatic multi-seed runner.
 
-Do not change the epoch schedule when resuming. A completed run is not silently
-overwritten; use a fresh output root for a new experiment. Training stops after
-an epoch once the configured time budget is reached; allow margin for long epochs
-and calibration. A process killed mid-epoch resumes from the last completed one.
-
-## 7. Evaluate each checkpoint without fine-tuning
-
-The default checkpoint is the tiny calibrated run. For real backbones, pass the
-actual calibrated checkpoint Path. All artifacts are under output_root/results.
+## 7. Evaluate without fine-tuning
 
 ```python
 !python scripts/07_evaluate.py --config configs/default.yaml
-# ckpt is the Path to best_calibrated.pt for the backbone/mode being evaluated.
-subprocess.run([sys.executable, 'scripts/07_evaluate.py', '--config', 'configs/default.yaml',
-                '--checkpoint', str(ckpt)], check=True)
 ```
 
-Evaluation saves predictions, per-source metrics, per-class F1, confusion matrices,
-ECE/AUC, all nine missingness modes, robustness plots, group-bootstrap intervals,
-and Grad-CAM/SHAP for up to 10 correct and 10 wrong in-domain test examples.
-Unavailable outcomes are reported, not manufactured. Backbone comparison CSV
-accumulates completed evaluations; it does not fabricate unrun backbone results.
-`--no-explainability` is available for diagnosis only; full paper evaluation should
-include explanations. No external data enters training or calibration.
+Default checkpoint: the tiny calibrated run. For real models pass the actual
+best_calibrated.pt using `--checkpoint`. Results go below output_root/results.
+PAD/HAM held-out test results are IN-DOMAIN. PH2 alone is external and evaluated
+only for labels present in the trained vocabulary. Its inspected fields are all
+missing, so it uses the validation-calibrated image-only fallback.
 
-## Before choosing final disease classes: one-command feasibility audit
+Artifacts include per-source metrics/predictions, fixed-vocabulary macro-F1,
+per-class F1, confusion matrices, defined-class AUC, ECE, all nine ablation modes,
+group-bootstrap intervals and up to 10 correct/10 wrong Grad-CAM+SHAP examples.
+Unavailable outcomes are reported. SHAP uses field-presence coalitions conditioned
+on each image; it is not proof of causality. Bootstrap intervals do not capture
+training-seed uncertainty. Backbone comparison accumulates only completed runs.
 
-The audit requires no label or site mappings. It refreshes Step 1 from the actual
-configured mounts (all five datasets are required), then hashes isolated raw
-copies below output_root/audit. It does not train or overwrite normalized/labeled
-pipeline tables. The first hashing pass can take time; subsequent audits reuse
-fingerprint-validated hashes. This is raw-data feasibility, not clinical approval.
-
-```python
-!python scripts/00_audit.py --config configs/default.yaml --schemas configs/dataset_schemas.yaml
-```
-
-```python
-from pathlib import Path
-import pandas as pd
-import yaml
-cfg = yaml.safe_load(Path('configs/default.yaml').read_text())
-audit = Path(cfg['paths']['output_root']) / 'audit'
-for name in ('source_summary', 'class_feasibility', 'metadata_availability', 'dermnet_review'):
-    print('\n' + name)
-    display(pd.read_csv(audit / f'{name}.csv'))
-```
-
-Share REPORT.md and these four CSVs to review the final disease taxonomy. Group
-counts are recorded identifier counts/proxies, not proof of biological independence.
-Counts are per original label, not per unified disease until equivalences are
-reviewed. Dermnet folder wording alone cannot approve an image-level diagnosis.
-
-The audit also creates `audit/audit_reports.zip` with the six aggregate report
-files (no image data or row-level raw metadata). Download it from Kaggle's Output
-panel and share it for review.
-
-## Follow-up: inspect exact evidence and non-ISIC perceptual overlap candidates
-
-After the audit, retain its files and attached images, then run:
-
-```python
-!python scripts/00_review_overlap.py --config configs/default.yaml
-```
-
-This does not hash all images again. Inspect audit/overlap_evidence.csv and
-PAD-UFES-20_overlap_review.png / Dermnet_overlap_review.png. The matching *_pairs.csv
-files contain all relevant representative edges; grids sample up to 20 each.
-SHA-equality counts are proven lower bounds from reported edges. Nonzero-distance
-pHash chains do not establish byte-identical images. See AUDIT_FINDINGS.md.
-
-Step 5 can take `--schemas configs/dataset_schemas.yaml` explicitly. Otherwise it
-loads dataset_schemas.yaml beside its config if available. Real PAD grouping now
-validates the uploaded patient/lesion filename prefix and uses patient-scoped
-lesion numbers; bare repeated lesion numbers do not merge unrelated patients.
-
-
-## Corrected duplicate policy after the targeted image review
-
-The original automatic `distance <= 5` removal was too aggressive. Default
-near_duplicate_policy is now `review`; the Hamming threshold still generates
-candidates, not decisions. Even distance-zero pHashes can collide.
-
-- SHA256-equal files are automatically grouped, independently of pHash buckets.
-- Other candidates are written to `<output_root>/near_duplicate_reviews.csv`.
-  Review the images, set `is_duplicate` to True or False, and record a reason in
-  notes. Leave uncertain pairs blank. Do not mark all candidates False or True
-  just to bypass the check. Decisions bind to SHA content, not filenames.
-- True joins the duplicate component. False rejects that candidate edge. A False
-  inside a component already joined by accepted edges is a conflicting decision
-  and must be resolved. Blank relevant pairs prevent readiness.
-- Audit runs successfully with pending reviews but writes **provisional** counts.
-  `<output_root>/audit/provisional_train_pool.csv` is not a training dataset.
-- Stage 04 must finish without pending/conflicting relevant pairs before stage 05.
-  Old deduped files are not trusted when the current status is pending. Stage 05
-  also checks the review/CSV fingerprints; training/evaluation validate the built
-  integrity manifest. Rebuild any previously prepared dataset with the new policy.
-
-To regenerate the raw feasibility report using the corrected policy:
-
-```python
-!python scripts/00_audit.py --config configs/default.yaml --schemas configs/dataset_schemas.yaml
-```
-
-Share audit/audit_reports.zip for revised provisional counts. For review, inspect
-near_duplicate_reviews.csv plus audit/near_duplicate_review.png and the pair IDs
-in audit/duplicates_report.csv. Grids only sample up to 20; every remaining relevant
-candidate needs its own decision. Existing hash caches are reused if fingerprints
-match. Input images and raw source metadata are never deleted by deduplication.
-
-After completing decisions, rerun the audit for raw feasibility and stage 04 for
-the harmonized pipeline; reviewed metadata may alter which training copy is best.
-The audit and stage 04 use the same default content-bound review file.
-
-## Current approved setup: PAD + reviewed Dermnet
-
-The current default excludes overlapping ISIC2018 (`enabled: false`). For the
-revised study attach PAD, Dermnet, HAM10000 and PH2; the ISIC input is optional
-and is not read. Earlier five-input/three-development-source descriptions above
-refer to the original plan and its historical audit. See REVISED_STUDY.md.
-
-After pulling, rerun merge or 00_audit. Inspect source_selection.csv to confirm
-the four active inputs and ISIC exclusion. Do not restore its rows from an old
-CSV. Label/site review and relevant pHash decisions remain prerequisites to real
-training. The synthetic smoke command now mirrors the enabled-source selection;
-legacy five-source fixtures remain available for regression checks.
+Do not call pooled HAM results zero-shot. PAD-only→HAM or HAM-only→PAD require
+separate study configurations, overlap checks and training runs. They are not
+performed by the default pooled pipeline.

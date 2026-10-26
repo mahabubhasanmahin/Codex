@@ -14,8 +14,7 @@ from crossskinnet.io import write_csv
 
 BASE_COLUMNS = ("image_id", "image_path", "source_dataset", "original_label",
                 "patient_id", "lesion_id", "age", "sex", "site")
-TRAIN = ("PAD-UFES-20", "ISIC2018", "Dermnet")
-EXTERNAL = ("HAM10000", "PH2")
+DATASETS = ("PAD-UFES-20", "ISIC2018", "Dermnet", "HAM10000", "PH2")
 MISSING = {"", "nan", "na", "null", "none"}
 
 
@@ -207,7 +206,7 @@ def load_dermnet(root: Path, schema: dict[str, Any]) -> list[dict[str, str]]:
 
 
 def load_ham10000(root: Path, schema: dict[str, Any]) -> list[dict[str, str]]:
-    """Load HAM10000 exclusively for the external pool."""
+    """Load HAM10000 using its configured study role."""
     return _load_csv(root, schema, "HAM10000")
 
 
@@ -216,7 +215,7 @@ def load_ph2(root: Path, schema: dict[str, Any]) -> list[dict[str, str]]:
     return _load_csv(root, schema, "PH2")
 
 
-LOADERS = dict(zip((*TRAIN, *EXTERNAL),
+LOADERS = dict(zip(DATASETS,
                    (load_pad_ufes20, load_isic2018, load_dermnet, load_ham10000, load_ph2)))
 
 
@@ -231,7 +230,7 @@ def merge_datasets(config_path: Path, schemas_path: Path) -> tuple[Path, Path]:
         if name not in config["datasets"]:
             continue
         settings = config["datasets"][name]
-        expected = "train" if name in TRAIN else "external_test"
+        expected = settings["pool"]
         if settings.get("pool") != expected:
             raise ValueError(f"{name}: pool must be {expected}; external data cannot train/validate")
         enabled = name in active_train or name in external

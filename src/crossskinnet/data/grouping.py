@@ -19,6 +19,9 @@ def assign_groups(rows: list[dict[str, str]], schemas: dict[str, Any] | None = N
     for row in rows:
         source = row['source_dataset']
         rule = schemas.get(source, {}).get('grouping', {})
+        required = rule.get('required_group_field')
+        if required and not present(row.get(required)):
+            raise ValueError(f'{source}: required grouping field {required} missing for {row["image_id"]}')
         scope = rule.get('lesion_id_scope', 'global')
         if scope not in ('patient', 'global'):
             raise ValueError(f'{source}: lesion_id_scope must be patient or global')

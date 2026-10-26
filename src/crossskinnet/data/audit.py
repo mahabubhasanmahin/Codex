@@ -11,6 +11,7 @@ import yaml
 from crossskinnet.data.dedup import run as deduplicate
 from crossskinnet.data.merge import merge_datasets, read_yaml
 from crossskinnet.data.metadata import FIELDS
+from crossskinnet.data.sources import enabled_sources
 from crossskinnet.io import config, present, read_csv, report, write_csv
 
 
@@ -133,11 +134,12 @@ def run(config_path: Path, schemas_path: Path) -> Path:
     write_csv(audit / 'dermnet_review.csv', [r for r in labels if r['source_dataset'] == 'Dermnet'], list(labels[0]))
     import json
     dedup_status = json.loads((audit / 'dedup_status.json').read_text())
+    _, external_sources = enabled_sources(cfg)
     summaries = []
     for source in sorted({r['source_dataset'] for r in train + external}):
         subset = [r for r in train + external if r['source_dataset'] == source]
         post = [r for r in kept if r['source_dataset'] == source]
-        is_external = source in ('HAM10000', 'PH2')
+        is_external = source in external_sources
         summaries.append(dict(source_dataset=source, pool='external_test' if is_external else 'train',
             raw_images=len(subset), retained_images=len(subset) if is_external else len(post),
             counts_status='external_unchanged' if is_external else ('verified_dedup' if dedup_status['ready'] else 'provisional_pending_review'),
@@ -176,12 +178,13 @@ def run(config_path: Path, schemas_path: Path) -> Path:
     return audit
 
 
-def overlap_evidence(raw: list[dict[str, str]], pairs: list[dict[str, str]]) -> list[dict[str, Any]]:
+def overlap_evidence(raw: list[dict[str, str]], pairs: list[dict[str, str]], external_sources: set[str] | None = None) -> list[dict[str, Any]]:
     """Count proven external connectivity in reported edges, not unseen image hashes.
 
     SHA-only counts are lower bounds: the duplicate report retains representative
     edges and can omit other exact-equality edges in the same perceptual bucket.
     """
+    external_sources = {'PH2'} if external_sources is None else external_sources
     result = []
     predicates = [('reported_sha256_edges', lambda row: str(row['exact_sha256']).lower() == 'true'),
                   ('reported_equal_phash_edges', lambda row: int(row['distance']) == 0),
@@ -201,7 +204,7 @@ def overlap_evidence(raw: list[dict[str, str]], pairs: list[dict[str, str]]) -> 
             if include(pair):
                 nodes = [(pair[f'source_{side}'], pair[f'image_id_{side}'], pair[f'image_path_{side}']) for side in ('a','b')]
                 parent[find(nodes[0])] = find(nodes[1])
-        external = {find(node) for node in list(parent) if node[0] in ('HAM10000','PH2')}
+        external = {find(node) for node in list(parent) if node[0] in external_sources}
         counts: Counter = Counter()
         for row in raw:
             node = (row['source_dataset'], row['image_id'], row['image_path'])
@@ -221,7 +224,8 @@ def review_overlap(config_path: Path) -> Path:
     audit = cfg['output'] / 'audit'
     raw = read_csv(cfg['output'] / 'raw_train_pool.csv')
     pairs = read_csv(audit / 'duplicates_report.csv')
-    evidence = overlap_evidence(raw, pairs)
+    _, external_sources = enabled_sources(cfg)
+    evidence = overlap_evidence(raw, pairs, external_sources)
     write_csv(audit / 'overlap_evidence.csv', evidence)
     for source in sorted({r['source_dataset'] for r in raw} - {'ISIC2018'}):
         selected = [r for r in pairs if str(r['exact_sha256']).lower() != 'true'

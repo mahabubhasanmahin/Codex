@@ -1,5 +1,4 @@
-# Layout: dataset_inspection.zip. PAD grouping: uploaded raw_train_pool.csv, all 2298 filenames match patient_id + lesion_id prefix.
-# PAD bare lesion numbers repeat across patients; patient IDs remain the split unit.
+# Dataset layout from inspection; identifier scope validated from uploaded metadata.
 datasets:
   PAD-UFES-20:
     format: csv
@@ -27,6 +26,7 @@ datasets:
     grouping:
       lesion_id_scope: patient
       image_id_prefix_template: '{patient_id}_{lesion_id}_'
+      required_group_field: patient_id
   ISIC2018:
     format: csv
     metadata_files:
@@ -73,6 +73,9 @@ datasets:
     - HAM10000_images_part_2/*.jpg
     missing_values:
     - unknown
+    grouping:
+      lesion_id_scope: global
+      required_group_field: lesion_id
   PH2:
     format: xlsx
     metadata_file: PH2Dataset/PH2_dataset.xlsx

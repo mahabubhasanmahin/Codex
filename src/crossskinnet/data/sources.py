@@ -1,40 +1,48 @@
-"""Configured source selection with immutable external-test roles."""
+"""Configured study roles, with PH2 always held out and legacy protocols explicit."""
 from __future__ import annotations
 
 from typing import Any
 
-TRAIN_SOURCES = ('PAD-UFES-20', 'ISIC2018', 'Dermnet')
-EXTERNAL_SOURCES = ('HAM10000', 'PH2')
+KNOWN_SOURCES = ('PAD-UFES-20', 'ISIC2018', 'Dermnet', 'HAM10000', 'PH2')
 
 
 def enabled_sources(cfg: dict[str, Any]) -> tuple[set[str], set[str]]:
-    """Honor explicit enabled flags; external references can never be disabled."""
+    """Read explicit roles; PH2 is always external and never optional.
+
+    HAM may be development in the current protocol or external in an explicitly
+    configured historical protocol. Required training sources bind each study
+    to its intended design, preventing a silent role change in the current one.
+    """
     datasets = cfg.get('datasets')
     if datasets is None:
-        return set(TRAIN_SOURCES), set(EXTERNAL_SOURCES)
-    unknown = set(datasets) - set(TRAIN_SOURCES + EXTERNAL_SOURCES)
+        return {'PAD-UFES-20', 'HAM10000', 'Dermnet'}, {'PH2'}
+    unknown = set(datasets) - set(KNOWN_SOURCES)
     if unknown:
         raise ValueError(f'Unknown dataset names: {sorted(unknown)}')
-    active_train = set()
-    for name in TRAIN_SOURCES + EXTERNAL_SOURCES:
-        settings = datasets.get(name)
-        if settings is None:
-            if name in EXTERNAL_SOURCES:
-                raise ValueError(f'External reference {name} must remain configured')
-            continue
+    if 'PH2' not in datasets:
+        raise ValueError('External reference PH2 must remain configured')
+    training, external = set(), set()
+    for name, settings in datasets.items():
         enabled = settings.get('enabled', True)
         if not isinstance(enabled, bool):
             raise ValueError(f'{name}: enabled must be a YAML boolean')
-        expected = 'train' if name in TRAIN_SOURCES else 'external_test'
-        if settings.get('pool') != expected:
-            raise ValueError(f'{name}: pool must be {expected}; external data cannot train/validate')
-        if name in EXTERNAL_SOURCES and not enabled:
+        pool = settings.get('pool')
+        if pool not in ('train', 'external_test'):
+            raise ValueError(f'{name}: pool must be train or external_test')
+        if name == 'PH2' and pool != 'external_test':
+            raise ValueError('PH2: pool must be external_test; PH2 cannot train/validate')
+        if name in ('PAD-UFES-20','ISIC2018','Dermnet') and pool != 'train':
+            raise ValueError(f'{name}: pool must be train in the supported protocols')
+        if pool == 'external_test' and not enabled:
             raise ValueError(f'{name}: external overlap references cannot be disabled')
-        if enabled and name in TRAIN_SOURCES:
-            active_train.add(name)
-    if not active_train:
+        if enabled:
+            (training if pool == 'train' else external).add(name)
+    if not training:
         raise ValueError('Enable at least one development dataset')
-    return active_train, set(EXTERNAL_SOURCES)
+    required = set(cfg.get('study', {}).get('required_training_sources', []))
+    if required - training:
+        raise ValueError(f'Required training sources are disabled or assigned external: {sorted(required - training)}')
+    return training, external
 
 
 def validate_source_rows(rows: list[dict[str, Any]], cfg: dict[str, Any], pool: str) -> None:
