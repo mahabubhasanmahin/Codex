@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from crossskinnet.io import config, read_csv, report, write_csv
+from crossskinnet.data.sources import validate_source_rows
 
 FIELDS = ['source_dataset', 'original_label', 'unified_label', 'coarse_group', 'include', 'notes']
 GROUPS = {'malignant', 'benign', 'inflammatory', 'infectious', 'other'}
@@ -29,7 +30,7 @@ def inventory(config_path: Path, mapping_path: Path) -> None:
     report('Label inventory', existing)
 
 
-def _mapping(path: Path) -> dict[tuple[str, str], dict[str, str]]:
+def _mapping(path: Path, required: set[tuple[str, str]] | None = None) -> dict[tuple[str, str], dict[str, str]]:
     """Validate every reviewed mapping and reject duplicate or incomplete entries."""
     mapping = {}
     for row in read_csv(path):
@@ -40,12 +41,12 @@ def _mapping(path: Path) -> dict[tuple[str, str], dict[str, str]]:
             raise ValueError(f'Duplicate mapping: {key}')
         if row['include'].lower() not in ('true', 'false'):
             raise ValueError(f'{key}: include must be True or False')
-        if row['include'].lower() == 'true' and (not row['unified_label'].strip() or row['coarse_group'] not in GROUPS):
+        if (required is None or key in required) and row['include'].lower() == 'true' and (not row['unified_label'].strip() or row['coarse_group'] not in GROUPS):
             raise ValueError(f'{key}: fill unified_label and coarse_group in {path}, or explicitly exclude')
         mapping[key] = row
     groups: dict[str, str] = {}
     for row in mapping.values():
-        if row['include'].lower() == 'true':
+        if row['include'].lower() == 'true' and (required is None or (row['source_dataset'], row['original_label']) in required):
             label, group = row['unified_label'], row['coarse_group']
             if label in groups and groups[label] != group:
                 raise ValueError(f'Conflicting coarse groups for unified label {label}')
@@ -55,9 +56,13 @@ def _mapping(path: Path) -> dict[tuple[str, str], dict[str, str]]:
 
 def apply(config_path: Path, mapping_path: Path) -> None:
     """Map both isolated pools and report every exclusion and unsupported test class."""
-    output = config(config_path)['output']
-    mapping = _mapping(mapping_path)
+    cfg = config(config_path)
+    output = cfg['output']
     pools = [read_csv(output / f'raw_{pool}_pool.csv') for pool in ('train', 'test')]
+    for pool, rows in zip(('train','test'), pools):
+        validate_source_rows(rows, cfg, pool)
+    required = {(r['source_dataset'],r['original_label']) for rows in pools for r in rows}
+    mapping = _mapping(mapping_path, required)
     missing = sorted({(r['source_dataset'], r['original_label']) for rows in pools for r in rows} - mapping.keys())
     if missing:
         raise ValueError(f'Missing label mappings: {missing}; run inventory and review {mapping_path}')

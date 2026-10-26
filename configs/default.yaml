@@ -1,15 +1,22 @@
 seed: 42
+study:
+  name: pad_dermnet_external_ham_ph2
+  required_training_sources: [PAD-UFES-20, Dermnet]
 paths:
   kaggle_input_root: /kaggle/input
   output_root: /kaggle/working
 datasets:
   PAD-UFES-20:
+    enabled: true
     path: /kaggle/input/datasets/maxjen/pad-ufes-20
     pool: train
   ISIC2018:
+    enabled: false
+    exclusion_reason: Current ISIC2018 copy overlaps HAM10000 external references; excluded from the revised study.
     path: /kaggle/input/datasets/mahabubhasanmahin/isic2018-final
     pool: train
   Dermnet:
+    enabled: true
     path: /kaggle/input/datasets/shubhamgoel27/dermnet
     pool: train
   HAM10000:

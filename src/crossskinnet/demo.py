@@ -25,6 +25,11 @@ def run(config_path: Path) -> Path:
     cfg = read_yaml(inputs / 'config.yaml')
     for section in ('dedup', 'metadata', 'model', 'training', 'evaluation'):
         cfg[section] = base[section]
+    if 'study' in base:
+        cfg['study'] = base['study']
+    for name, settings in cfg['datasets'].items():
+        settings['enabled'] = base.get('datasets', {}).get(name, {}).get('enabled', True)
+        settings['exclusion_reason'] = base.get('datasets', {}).get(name, {}).get('exclusion_reason', '')
     cfg['paths']['output_root'] = str(directory / 'outputs')
     cfg['training'].update(epochs=1, image_size=32, batch_size=16)
     cfg['evaluation'].update(bootstrap_repetitions=20, explanations_per_outcome=1, shap_samples=32)

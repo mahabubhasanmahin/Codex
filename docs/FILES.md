@@ -62,3 +62,6 @@
 | `src/crossskinnet/data/grouping.py` | Explicit patient/global lesion scope and validated patient grouping. |
 | `scripts/00_review_overlap.py` | Exact/perceptual evidence and focused overlap review CLI. |
 | `docs/AUDIT_FINDINGS.md` | Findings and unresolved limitations from the uploaded real-data reports. |
+| `src/crossskinnet/data/sources.py` | Source enable flags, fixed external roles and stale-pool validation. |
+| `tests/test_source_selection.py` | Revised default, absent disabled input and active-only label validation tests. |
+| `docs/REVISED_STUDY.md` | Approved two-source revision, scientific limits and Kaggle steps. |

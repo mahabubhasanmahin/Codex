@@ -17,6 +17,7 @@ from torch.utils.data import DataLoader
 from crossskinnet.io import config, read_csv, report, write_csv
 from crossskinnet.models.network import CrossSkinNet
 from crossskinnet.train.dataset import SkinDataset
+from crossskinnet.data.sources import validate_source_rows, validate_training_coverage
 
 
 def validate_integrity(root: Path) -> None:
@@ -119,6 +120,8 @@ def run(config_path: Path, backbone: str = 'tiny', epochs: int | None = None,
         raise ValueError('Duplicate review incomplete in output_root; do not train a provisional or stale dataset')
     validate_integrity(root)
     rows = read_csv(root / 'metadata.csv')
+    validate_source_rows(rows, cfg, 'train')
+    validate_training_coverage([row for row in rows if row['split']=='train'], cfg)
     group_splits: dict[str, set[str]] = {}
     for row in rows:
         if row['source_dataset'] not in ('PAD-UFES-20', 'ISIC2018', 'Dermnet'):

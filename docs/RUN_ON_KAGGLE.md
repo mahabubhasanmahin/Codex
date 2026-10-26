@@ -233,3 +233,16 @@ match. Input images and raw source metadata are never deleted by deduplication.
 After completing decisions, rerun the audit for raw feasibility and stage 04 for
 the harmonized pipeline; reviewed metadata may alter which training copy is best.
 The audit and stage 04 use the same default content-bound review file.
+
+## Current approved setup: PAD + reviewed Dermnet
+
+The current default excludes overlapping ISIC2018 (`enabled: false`). For the
+revised study attach PAD, Dermnet, HAM10000 and PH2; the ISIC input is optional
+and is not read. Earlier five-input/three-development-source descriptions above
+refer to the original plan and its historical audit. See REVISED_STUDY.md.
+
+After pulling, rerun merge or 00_audit. Inspect source_selection.csv to confirm
+the four active inputs and ISIC exclusion. Do not restore its rows from an old
+CSV. Label/site review and relevant pHash decisions remain prerequisites to real
+training. The synthetic smoke command now mirrors the enabled-source selection;
+legacy five-source fixtures remain available for regression checks.

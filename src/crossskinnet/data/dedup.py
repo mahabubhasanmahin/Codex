@@ -13,6 +13,7 @@ import numpy as np
 from PIL import Image, ImageDraw
 
 from crossskinnet.data.metadata import FIELDS
+from crossskinnet.data.sources import validate_source_rows
 from crossskinnet.io import config, present, read_csv, report, write_csv
 
 
@@ -181,6 +182,8 @@ def run(config_path: Path, allow_pending: bool = False) -> None:
         raise ValueError('Training pool is empty')
     if any(r['source_dataset'] in ('HAM10000', 'PH2') for r in train):
         raise ValueError('External data found in training pool')
+    validate_source_rows(train, cfg, 'train')
+    validate_source_rows(external, cfg, 'test')
     rows = train + external
     hashes = cached_hashes(rows, output / 'image_hashes.csv', int(options.get('workers', 4)))
     exact, candidates = _candidate_edges(rows, hashes, threshold, len(train))
@@ -207,11 +210,11 @@ def run(config_path: Path, allow_pending: bool = False) -> None:
         sha_a, sha_b = str(hashes[a['image_path']]['sha256']), str(hashes[b['image_path']]['sha256'])
         identity = _pair_id(sha_a, sha_b)
         pair_ids[(left, right)] = identity
-        if identity not in review_records:
-            review_records[identity] = dict(pair_id=identity, sha256_a=sha_a, sha256_b=sha_b,
+        previous_review = review_records.get(identity, {})
+        review_records[identity] = dict(pair_id=identity, sha256_a=sha_a, sha256_b=sha_b,
                 source_a=a['source_dataset'], source_b=b['source_dataset'], image_id_a=a['image_id'],
                 image_id_b=b['image_id'], image_path_a=a['image_path'], image_path_b=b['image_path'],
-                distance=str(distance), is_duplicate='', notes='')
+                distance=str(distance), is_duplicate=previous_review.get('is_duplicate',''), notes=previous_review.get('notes',''))
         if decisions.get(identity) == 'true':
             union(left, right)
     review_fields = ['pair_id','sha256_a','sha256_b','source_a','source_b','image_id_a','image_id_b',

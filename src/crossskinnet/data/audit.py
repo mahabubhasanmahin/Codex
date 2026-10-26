@@ -116,7 +116,7 @@ def run(config_path: Path, schemas_path: Path) -> Path:
     if not reviews.is_absolute():
         reviews = config_path.resolve().parent / reviews
     options['reviews_csv'] = str(reviews.resolve())
-    audit_cfg = {'seed': cfg['seed'], 'paths': {'output_root': str(audit.resolve())}, 'dedup': options}
+    audit_cfg = {'seed': cfg['seed'], 'paths': {'output_root': str(audit.resolve())}, 'dedup': options, 'datasets': cfg.get('datasets')}
     audit_config = audit / 'audit_config.yaml'
     audit_config.write_text(yaml.safe_dump(audit_cfg))
     print('Hashing raw images (first run can take time; later runs reuse the cache).', flush=True)

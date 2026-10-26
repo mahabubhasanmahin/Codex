@@ -9,6 +9,7 @@ import yaml
 
 from crossskinnet.io import config, present, read_csv, report, write_csv
 from crossskinnet.data.merge import read_yaml
+from crossskinnet.data.sources import validate_source_rows
 
 SYMPTOMS = ('itch', 'grew', 'hurt', 'changed', 'bleed', 'elevation')
 FIELDS = ('age', 'sex', 'site', *SYMPTOMS)
@@ -74,12 +75,14 @@ def _normalize(row: dict[str, str], schema: dict[str, Any], sites: dict[str, str
 
 def apply(config_path: Path, schemas_path: Path, mapping_path: Path) -> None:
     """Normalize both pools and preserve every included row."""
-    output = config(config_path)['output']
+    cfg = config(config_path)
+    output = cfg['output']
     schemas = read_yaml(schemas_path)['datasets']
     sites = read_yaml(mapping_path)['datasets']
     pools = {}
     for pool in ('train', 'test'):
         raw = read_csv(output / f'labeled_{pool}_pool.csv')
+        validate_source_rows(raw, cfg, pool)
         pools[pool] = [_normalize(row, schemas[row['source_dataset']], sites.get(row['source_dataset'], {})) for row in raw]
     for pool, rows in pools.items():
         if not rows:

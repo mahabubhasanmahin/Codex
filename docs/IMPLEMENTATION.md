@@ -1,5 +1,9 @@
 # Paper-plan implementation and limits
 
+Current default follows the user-approved PAD + reviewed Dermnet revision; see
+REVISED_STUDY.md. References to the original three-source design below describe
+the PDF plan and historical audit, not a claim that three-source training occurred.
+
 The supplied PDF is a research plan, not a report of measured results. Slides
 18–24 specify dual encoding, gated cross-attention, all-missing image fallback,
 Grad-CAM/SHAP, held-out testing, zero-shot HAM/PH2 testing and backbone comparisons.

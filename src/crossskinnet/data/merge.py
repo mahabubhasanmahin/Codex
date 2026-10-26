@@ -2,11 +2,15 @@
 from __future__ import annotations
 
 import csv
+import json
 from collections import Counter
 from pathlib import Path
 from typing import Any
 
 import yaml
+
+from crossskinnet.data.sources import enabled_sources
+from crossskinnet.io import write_csv
 
 BASE_COLUMNS = ("image_id", "image_path", "source_dataset", "original_label",
                 "patient_id", "lesion_id", "age", "sex", "site")
@@ -221,11 +225,21 @@ def merge_datasets(config_path: Path, schemas_path: Path) -> tuple[Path, Path]:
     config = read_yaml(config_path)
     schemas = read_yaml(schemas_path)["datasets"]
     pools: dict[str, list[dict[str, str]]] = {"train": [], "external_test": []}
+    active_train, external = enabled_sources(config)
+    selection = []
     for name, loader in LOADERS.items():
+        if name not in config["datasets"]:
+            continue
         settings = config["datasets"][name]
         expected = "train" if name in TRAIN else "external_test"
         if settings.get("pool") != expected:
             raise ValueError(f"{name}: pool must be {expected}; external data cannot train/validate")
+        enabled = name in active_train or name in external
+        selection.append(dict(source_dataset=name, pool=expected, enabled=enabled,
+            reason='' if enabled else settings.get('exclusion_reason', 'Disabled by configuration')))
+        if not enabled:
+            print(f"Excluded source {name}: {selection[-1]['reason']}")
+            continue
         root = Path(settings["path"])
         if not root.is_absolute():
             root = config_path.resolve().parent / root
@@ -238,6 +252,8 @@ def merge_datasets(config_path: Path, schemas_path: Path) -> tuple[Path, Path]:
     if not output.is_absolute():
         output = config_path.resolve().parent / output
     output.mkdir(parents=True, exist_ok=True)
+    write_csv(output / 'source_selection.csv', selection)
+    (output / 'source_selection.json').write_text(json.dumps(selection, indent=2))
     paths = (output / "raw_train_pool.csv", output / "raw_test_pool.csv")
     for (pool, rows), path in zip(pools.items(), paths):
         for row in rows:
