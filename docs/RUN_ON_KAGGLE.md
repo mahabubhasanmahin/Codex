@@ -1,3 +1,11 @@
+# Recommended complete workflow
+
+Use notebooks/03_complete_paper.ipynb and docs/PAPER_WORKFLOW.md for the single
+entry-point workflow. It uses an explicit group-quarantine cohort policy, not
+manual pHash guesses. The instructions below preserve the individual-stage
+human-review workflow for reproducibility; they are not required to click through
+when using configs/paper.yaml.
+
 # Current Kaggle workflow: PAD + HAM development, PH2 external
 
 Use PAD-UFES-20 and HAM10000 for development. PH2 is the external-only test and

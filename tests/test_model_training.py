@@ -120,3 +120,21 @@ def test_pending_dedup_blocks_training(prepared_pipeline: Path, tmp_path: Path):
     with pytest.raises(ValueError,match='Duplicate review incomplete'):
         run(path)
     assert not (output / 'runs').exists()
+
+
+def test_controlled_baselines_and_image_only_invariance():
+    """Image-only ignores metadata, while concat supports missing-field fallback."""
+    from crossskinnet.models.network import CrossSkinNet
+    seed_all(42)
+    torch.set_num_threads(2)
+    image=torch.randn(3,3,16,16)
+    values=torch.randn(3,sum(WIDTHS))
+    mask=torch.ones(3,len(FIELDS))
+    for architecture in ('image_only','concat'):
+        model=CrossSkinNet(3,'tiny',{},16,2,architecture).eval()
+        result=model(image,values,mask)
+        assert result['logits'].shape==(3,3)
+        missing=model(image,torch.zeros_like(values),torch.zeros_like(mask))
+        assert torch.allclose(missing['logits'],missing['image_logits'])
+        if architecture=='image_only':
+            assert torch.allclose(result['logits'],missing['logits'])

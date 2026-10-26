@@ -5,8 +5,8 @@ Python 3.10+, targeting Kaggle notebooks, PyTorch, a single GPU and 12-hour sess
 The code implements stages 0–7. It has been exercised on synthetic data, not trained
 on the real medical datasets. No experimental accuracy is claimed.
 
-**Start here:** [Kaggle notebook](notebooks/CrossSkinNet_Kaggle.ipynb) and
-[exact commands](docs/RUN_ON_KAGGLE.md).
+**Start here:** [Complete Kaggle notebook](notebooks/03_complete_paper.ipynb) and
+[paper workflow](docs/PAPER_WORKFLOW.md). The older step-by-step/review tools remain available.
 
 ```sh
 python -m pip install -r requirements.txt
@@ -76,3 +76,10 @@ See docs/THREE_CLASS_PROTOCOL.md for exact source mappings and deliberate exclus
 For selected-data duplicate review before site normalization, open
 notebooks/02_three_class_review.ipynb. Its explicit per-pair decisions save to CSV;
 no candidate is automatically approved or rejected.
+
+
+For the complete agreed experiment, use `python scripts/08_paper.py run --config
+configs/paper.yaml --backbone efficientnet` from the repository root. This opts
+into conservative group quarantine, rather than asking you to guess every pHash
+candidate. Exclusions are not duplicate verdicts; cohort counts and policy must be
+reported. The strict human-review default config is unchanged. See PAPER_WORKFLOW.md.

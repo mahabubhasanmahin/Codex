@@ -64,7 +64,9 @@ def run(config_path: Path, checkpoint_path: Path, explainability: bool = True) -
     inference_cfg['evaluation'] = options
     model = make_model(inference_cfg, checkpoint['backbone'], classes, checkpoint['frozen']).to(device)
     model.load_state_dict(checkpoint['model'])
-    tag = f"{checkpoint['backbone']}_{'frozen' if checkpoint['frozen'] else 'finetuned'}"
+    architecture = checkpoint["config"]["model"].get("architecture","crossskinnet")
+    prefix = "" if architecture=="crossskinnet" else architecture+"_"
+    tag = f"{prefix}{checkpoint['backbone']}_{'frozen' if checkpoint['frozen'] else 'finetuned'}"
     destination = cfg['output'] / 'results' / tag
     destination.mkdir(parents=True, exist_ok=True)
     detailed = {}
@@ -92,7 +94,7 @@ def run(config_path: Path, checkpoint_path: Path, explainability: bool = True) -
                     unified_label=r['unified_label'], reason='no_training_counterpart') for r in excluded)
                 lo, hi = bootstrap_f1(targets, probability, [r['group_id'] for r in dataset.rows],
                     int(cfg['seed']), int(options.get('bootstrap_repetitions', 1000)), evaluation_labels=evaluation_labels)
-                comparison.append(dict(backbone=checkpoint['backbone'], frozen=checkpoint['frozen'], split=split,
+                comparison.append(dict(architecture=architecture, seed=checkpoint['config']['seed'], backbone=checkpoint['backbone'], frozen=checkpoint['frozen'], split=split,
                     macro_f1=metric['macro_f1'], evaluated_classes=metric['evaluated_classes'],
                     macro_f1_all_training_classes=metric['macro_f1_all_training_classes'], ci95_low=lo, ci95_high=hi, samples=len(targets),
                     excluded_samples=dataset.excluded, dataset_signature=signature))
@@ -125,7 +127,8 @@ def run(config_path: Path, checkpoint_path: Path, explainability: bool = True) -
     comparison_path = cfg['output'] / 'results/backbone_comparison.csv'
     old = read_csv(comparison_path) if comparison_path.exists() else []
     retained = [r for r in old if not (r['backbone'] == checkpoint['backbone'] and
-                r['frozen'].lower() == str(checkpoint['frozen']).lower() and r['dataset_signature'] == signature)]
+                r['frozen'].lower() == str(checkpoint['frozen']).lower() and r['dataset_signature'] == signature
+                and r.get('architecture','crossskinnet')==architecture and str(r.get('seed',checkpoint['config']['seed']))==str(checkpoint['config']['seed']))]
     write_csv(comparison_path, retained + comparison)
     import matplotlib
     matplotlib.use('Agg')

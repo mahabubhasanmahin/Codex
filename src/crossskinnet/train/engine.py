@@ -21,12 +21,12 @@ from crossskinnet.data.sources import validate_target_labels, validate_source_ro
 
 
 def validate_integrity(root: Path) -> None:
-    """Require a review-cleared dataset produced by the current build stage."""
+    """Require an explicitly safe-policy dataset produced by the current build stage."""
     manifest = root / 'dataset_integrity.json'
     if not manifest.exists():
         raise ValueError('Missing dataset_integrity.json; rerun review-aware stages 04 and 05')
     record = json.loads(manifest.read_text())
-    if record.get('policy') != 'review' or not record.get('ready'):
+    if record.get('policy') not in ('review','quarantine') or not record.get('ready'):
         raise ValueError('Dataset is not cleared for duplicate review')
     for name in ('metadata.csv','zero_shot.csv'):
         if hashlib.sha256((root / name).read_bytes()).hexdigest() != record.get('files', {}).get(name):
@@ -63,7 +63,7 @@ def make_model(cfg: dict[str, Any], backbone: str, classes: list[str], frozen: b
     options = dict(cfg['model']['backbones'][backbone])
     if frozen is not None:
         options['frozen'] = frozen
-    return CrossSkinNet(len(classes), backbone, options, int(cfg['model']['dimension']), int(cfg['model']['heads']))
+    return CrossSkinNet(len(classes), backbone, options, int(cfg['model']['dimension']), int(cfg['model']['heads']), cfg['model'].get('architecture','crossskinnet'))
 
 
 def batch_forward(model: CrossSkinNet, batch: dict[str, torch.Tensor], device: torch.device) -> dict[str, torch.Tensor]:
@@ -134,7 +134,8 @@ def run(config_path: Path, backbone: str = 'tiny', epochs: int | None = None,
     if len(classes) < 2:
         raise ValueError('Training requires at least two classes')
     model = make_model(cfg, backbone, classes, frozen).to(device)
-    run_dir = cfg['output'] / 'runs' / f"{backbone}_{'frozen' if model.image_encoder.frozen else 'finetuned'}"
+    prefix = "" if model.architecture=="crossskinnet" else model.architecture+"_"
+    run_dir = cfg['output'] / 'runs' / f"{prefix}{backbone}_{'frozen' if model.image_encoder.frozen else 'finetuned'}"
     if (run_dir / 'last.pt').exists() and resume is None:
         raise ValueError(f'{run_dir} already contains checkpoints; use --resume or a different output_root')
     run_dir.mkdir(parents=True, exist_ok=True)
@@ -166,6 +167,8 @@ def run(config_path: Path, backbone: str = 'tiny', epochs: int | None = None,
         checkpoint = torch.load(resume, map_location=device, weights_only=False)
         if checkpoint['signature'] != signature or checkpoint['classes'] != classes or checkpoint['backbone'] != backbone:
             raise ValueError('Resume checkpoint dataset/classes/backbone do not match')
+        if checkpoint['config']['model'] != cfg['model']:
+            raise ValueError('Resume architecture/model configuration does not match')
         old_options = dict(checkpoint['config']['training'])
         if old_options != options or checkpoint['frozen'] != model.image_encoder.frozen:
             raise ValueError('Resume requires identical training hyperparameters, epoch schedule and frozen mode')
@@ -196,7 +199,8 @@ def run(config_path: Path, backbone: str = 'tiny', epochs: int | None = None,
                 targets = batch['label'].to(device)
                 loss = criterion(result['logits'], targets)
                 # Auxiliary image supervision trains fallback even when no sample drops all fields.
-                loss = loss + float(options.get('image_aux_weight', .25)) * criterion(result['image_logits'], targets)
+                if model.architecture!='image_only':
+                    loss = loss + float(options.get('image_aux_weight', .25)) * criterion(result['image_logits'], targets)
             scaler.scale(loss).backward()
             scaler.unscale_(optimizer)
             nn.utils.clip_grad_norm_(model.parameters(), 5)
@@ -229,7 +233,13 @@ def run(config_path: Path, backbone: str = 'tiny', epochs: int | None = None,
             torch.save(checkpoint, run_dir / 'best.pt')
         write_csv(run_dir / 'metrics.csv', history)
         print(history[-1], flush=True)
-        if patience >= int(options['patience']) or time.monotonic() - started > float(options.get('max_hours', 11)) * 3600:
+        early_stopped = patience >= int(options['patience'])
+        budget_stopped = time.monotonic() - started > float(options.get('max_hours', 11)) * 3600
+        progress = dict(dataset_signature=signature,calibration_complete=False,completed_epochs=epoch+1,target_epochs=total_epochs,
+            complete=(epoch+1>=total_epochs or early_stopped),early_stopped=early_stopped,
+            budget_stopped=budget_stopped,best_val_macro_f1=best)
+        (run_dir / 'training_state.json').write_text(json.dumps(progress,indent=2))
+        if early_stopped or budget_stopped:
             break
     best_checkpoint = torch.load(run_dir / 'best.pt', map_location=device, weights_only=False)
     model.load_state_dict(best_checkpoint['model'])
@@ -238,6 +248,11 @@ def run(config_path: Path, backbone: str = 'tiny', epochs: int | None = None,
     best_checkpoint['calibration'] = calibration
     torch.save(best_checkpoint, run_dir / 'best_calibrated.pt')
     write_csv(run_dir / 'calibration.csv', [calibration])
+    state_file = run_dir / 'training_state.json'
+    state = json.loads(state_file.read_text())
+    state['calibration_complete']=True
+    state['calibrated_checkpoint_epoch']=best_checkpoint['epoch']+1
+    state_file.write_text(json.dumps(state,indent=2))
     (run_dir / 'classes.json').write_text(json.dumps(classes))
     report('Epoch metrics', history)
     print('Calibration (validation only):', calibration)

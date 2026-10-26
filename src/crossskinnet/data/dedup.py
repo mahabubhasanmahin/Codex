@@ -13,6 +13,8 @@ import numpy as np
 from PIL import Image, ImageDraw
 
 from crossskinnet.data.metadata import FIELDS
+from crossskinnet.data.quarantine import quarantine_groups
+from crossskinnet.data.merge import read_yaml
 from crossskinnet.data.sources import validate_source_rows
 from crossskinnet.io import config, present, read_csv, report, write_csv
 
@@ -173,8 +175,9 @@ def run(config_path: Path, allow_pending: bool = False) -> None:
     threshold = int(options.get('hamming_threshold', 5))
     if not 0 <= threshold <= 64:
         raise ValueError('hamming_threshold must lie in [0, 64]')
-    if options.get('near_duplicate_policy', 'review') != 'review':
-        raise ValueError('near_duplicate_policy must be review; pHash alone cannot confirm duplicates')
+    policy = options.get('near_duplicate_policy', 'review')
+    if policy not in ('review','quarantine'):
+        raise ValueError('near_duplicate_policy must be review or quarantine; pHash alone never confirms duplicates')
     train = read_csv(output / 'metadata_train_pool.csv')
     reference = output / 'raw_test_pool.csv'
     external = read_csv(reference if reference.exists() else output / 'metadata_test_pool.csv')
@@ -230,8 +233,20 @@ def run(config_path: Path, allow_pending: bool = False) -> None:
         elif len(training) > 1:
             best = max(training, key=lambda i: (sum(present(rows[i].get(field)) for field in FIELDS), -i))
             removed.update(set(training) - {best})
-    kept = [row for index, row in enumerate(train) if index not in removed]
-    retained_roots = {find(index) for index in range(len(train)) if index not in removed}
+    quarantined, quarantine_reasons = set(), {}
+    if policy=='quarantine':
+        schema_path = options.get('grouping_schemas')
+        if not schema_path:
+            raise ValueError('Quarantine requires dedup.grouping_schemas with explicit patient/lesion rules')
+        schema_file = Path(schema_path)
+        if not schema_file.is_absolute():
+            schema_file = config_path.resolve().parent / schema_file
+        schemas = read_yaml(schema_file)['datasets']
+        unresolved = [(left,right) for left,right,_ in candidates if not decisions.get(pair_ids[(left,right)],'')]
+        excluded, quarantine_reasons = quarantine_groups(train,[find(i) for i in range(len(rows))],external_roots,unresolved,schemas)
+        quarantined = excluded - removed
+    kept = [row for index, row in enumerate(train) if index not in removed and index not in quarantined]
+    retained_roots = {find(index) for index in range(len(train)) if index not in removed and index not in quarantined}
     pending, conflicting = [], []
     pairs = []
     for left, right, distance in exact + candidates:
@@ -250,7 +265,7 @@ def run(config_path: Path, allow_pending: bool = False) -> None:
                 action = 'review_pending'
                 pending.append(identity)
             else:
-                action = 'review_pending_no_retained_training_member'
+                action = 'quarantined_unresolved_candidate' if policy=='quarantine' else 'review_pending_no_retained_training_member'
         elif find(left) in external_roots and (left < len(train) or right < len(train)):
             action = 'remove_train_external_overlap'
         else:
@@ -261,14 +276,19 @@ def run(config_path: Path, allow_pending: bool = False) -> None:
     write_csv(output / 'duplicates_report.csv', pairs, ['image_id_a','image_id_b','image_path_a','image_path_b',
         'source_a','source_b','distance','exact_sha256','pair_id','decision_basis','action'])
     write_csv(output / 'provisional_train_pool.csv', kept, list(train[0]))
-    ready = not pending and not conflicting
+    ready = not pending and not conflicting and bool(kept)
     if ready:
         write_csv(output / 'deduped_train_pool.csv', kept, list(train[0]))
-    status = dict(policy='review', ready=ready, pending_relevant_pairs=len(set(pending)),
+    status = dict(policy=policy, ready=ready, quarantined_training_rows=len(quarantined),
+        unresolved_candidate_pairs=sum(not decisions.get(identity,'') for identity in pair_ids.values()), pending_relevant_pairs=len(set(pending)),
         conflicting_reviews=len(set(conflicting)), reviews_csv=str(reviews),
         reviews_sha256=hashlib.sha256(reviews.read_bytes()).hexdigest(), hamming_threshold=threshold,
+        grouping_schema_file=str(schema_file) if policy=='quarantine' else None,
+        grouping_schema_sha256=hashlib.sha256(schema_file.read_bytes()).hexdigest() if policy=='quarantine' else None,
         train_pool_sha256=hashlib.sha256((output / 'deduped_train_pool.csv').read_bytes()).hexdigest() if ready else None)
     (output / 'dedup_status.json').write_text(json.dumps(status, indent=2))
+    write_csv(output / 'quarantined_training.csv',[{**train[index],'exclusion_reason':quarantine_reasons[index]}
+        for index in sorted(quarantined)],[*train[0],'exclusion_reason'])
     removed_rows = [{**train[index], 'removal_reason': 'external_overlap_component' if find(index) in external_roots
                      else 'training_duplicate_component'} for index in sorted(removed)]
     write_csv(output / 'removed_training_duplicates.csv', removed_rows, [*train[0],'removal_reason'])
@@ -278,8 +298,11 @@ def run(config_path: Path, allow_pending: bool = False) -> None:
     save_duplicate_grid([pair for pair in pairs if pair['action']=='review_pending'],
                         output / 'near_duplicate_review.png', int(cfg['seed']))
     print('Verified removals by training source:', dict(Counter(train[index]['source_dataset'] for index in removed)))
+    print('Quarantined development rows (not duplicate verdicts):', len(quarantined))
     print('External pool unchanged:', len(external), '; relevant pending reviews:', len(set(pending)))
     report('Provisional training (not ready when reviews remain)', kept)
+    if not kept:
+        raise ValueError('No development images remain after verified removals/group quarantine; no training-ready pool published')
     if conflicting:
         raise ValueError(f'Conflicting duplicate reviews inside accepted components: {len(set(conflicting))}; correct {reviews}')
     if pending and not allow_pending:

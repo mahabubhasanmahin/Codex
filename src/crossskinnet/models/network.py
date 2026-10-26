@@ -29,17 +29,24 @@ class MetadataEncoder(nn.Module):
 class CrossSkinNet(nn.Module):
     """Route each sample independently to full fusion or calibrated image-only logits."""
 
-    def __init__(self, classes: int, backbone: str, options: dict[str, Any], dimension: int = 64, heads: int = 4) -> None:
+    def __init__(self, classes: int, backbone: str, options: dict[str, Any], dimension: int = 64, heads: int = 4, architecture: str = 'crossskinnet') -> None:
         super().__init__()
         if dimension % heads:
             raise ValueError('Fusion dimension must be divisible by attention heads')
+        if architecture not in ('crossskinnet','image_only','concat'):
+            raise ValueError(f'Unknown architecture {architecture}')
+        self.architecture = architecture
         self.image_encoder = ImageEncoder(backbone, options)
         self.image_projection = nn.Linear(self.image_encoder.dimension, dimension)
-        self.metadata_encoder = MetadataEncoder(dimension)
-        self.attention = nn.MultiheadAttention(dimension, heads, batch_first=True)
-        self.gate = nn.Linear(dimension * 2, dimension)
-        self.fusion_norm = nn.LayerNorm(dimension)
-        self.fusion_head = nn.Linear(dimension, classes)
+        if architecture!='image_only':
+            self.metadata_encoder = MetadataEncoder(dimension)
+            self.fusion_head = nn.Linear(dimension, classes)
+        if architecture=='crossskinnet':
+            self.attention = nn.MultiheadAttention(dimension, heads, batch_first=True)
+            self.gate = nn.Linear(dimension * 2, dimension)
+            self.fusion_norm = nn.LayerNorm(dimension)
+        elif architecture=='concat':
+            self.concat_projection = nn.Sequential(nn.Linear(dimension*2,dimension),nn.ReLU())
         self.image_head = nn.Linear(dimension, classes)
         self.register_buffer('temperature', torch.ones(()))
 
@@ -48,12 +55,18 @@ class CrossSkinNet(nn.Module):
         pooled, tokens = self.image_encoder(image)
         pooled = self.image_projection(pooled)
         tokens = self.image_projection(tokens)
-        clinical = self.metadata_encoder(metadata, mask)
-        attended, weights = self.attention(tokens, clinical, clinical)
-        context = attended.mean(1)
-        gate = torch.sigmoid(self.gate(torch.cat([pooled, context], -1)))
-        fused = self.fusion_norm(pooled + gate * context)
         image_logits = self.image_head(pooled)
+        weights = tokens.new_zeros((len(image),tokens.shape[1],len(WIDTHS)))
+        if self.architecture=='image_only':
+            return {'logits':image_logits/self.temperature.clamp_min(.05),'image_logits':image_logits,'attention':weights}
+        clinical = self.metadata_encoder(metadata, mask)
+        if self.architecture=='concat':
+            fused = self.concat_projection(torch.cat([pooled,clinical.mean(1)],-1))
+        else:
+            attended, weights = self.attention(tokens, clinical, clinical)
+            context = attended.mean(1)
+            gate = torch.sigmoid(self.gate(torch.cat([pooled, context], -1)))
+            fused = self.fusion_norm(pooled + gate * context)
         available = mask.bool().any(1, keepdim=True)
         logits = torch.where(available, self.fusion_head(fused), image_logits / self.temperature.clamp_min(.05))
         return {'logits': logits, 'image_logits': image_logits, 'attention': weights}

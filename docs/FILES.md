@@ -71,3 +71,10 @@
 | `tests/test_selected_review.py` | Canonical mapping, external-reference protection and saved-widget-decision checks. |
 | `docs/THREE_CLASS_PROTOCOL.md` | Exact selected taxonomy, exclusions and source-verification limits. |
 | `notebooks/02_three_class_review.ipynb` | Kaggle bootstrap and interactive duplicate-review workflow. |
+| `configs/paper.yaml` | Complete paper-run configuration with explicit group-quarantine policy. |
+| `src/crossskinnet/data/quarantine.py` | Conservative development-group exclusions without duplicate verdicts. |
+| `src/crossskinnet/pipeline.py` | Reproducible prepare/train/evaluate/plan/summary orchestration. |
+| `scripts/08_paper.py` | Single command entry point for the complete workflow. |
+| `tests/test_paper_workflow.py` | Offline full-workflow, baseline, reuse and cohort accounting checks. |
+| `docs/PAPER_WORKFLOW.md` | Exact paper commands, supported experiments and scientific limits. |
+| `notebooks/03_complete_paper.ipynb` | Minimal Kaggle notebook from setup to one complete experiment. |

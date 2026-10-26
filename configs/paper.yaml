@@ -1,0 +1,114 @@
+# Paper protocol: uncertain development GROUPS are quarantined, never declared duplicates.
+# This changes the analyzed cohort; report quarantine counts and retained group/class counts.
+seed: 42
+study:
+  name: pad_ham_external_ph2
+  target_labels:
+  - melanoma
+  - basal_cell_carcinoma
+  - melanocytic_nevus
+  required_training_sources:
+  - PAD-UFES-20
+  - HAM10000
+paths:
+  kaggle_input_root: /kaggle/input
+  output_root: /kaggle/working/crossskinnet_paper
+datasets:
+  PAD-UFES-20:
+    enabled: true
+    path: /kaggle/input/datasets/maxjen/pad-ufes-20
+    pool: train
+  ISIC2018:
+    enabled: false
+    exclusion_reason: Current ISIC2018 is redundant with HAM10000; excluded from the
+      PAD+HAM development study.
+    path: /kaggle/input/datasets/mahabubhasanmahin/isic2018-final
+    pool: train
+  Dermnet:
+    enabled: false
+    exclusion_reason: Optional source; enable only after disease-level label review.
+    path: /kaggle/input/datasets/shubhamgoel27/dermnet
+    pool: train
+  HAM10000:
+    enabled: true
+    path: /kaggle/input/datasets/kmader/skin-cancer-mnist-ham10000
+    pool: train
+  PH2:
+    path: /kaggle/input/datasets/spacesurfer/ph2-dataset
+    pool: external_test
+dedup:
+  near_duplicate_policy: quarantine
+  hamming_threshold: 5
+  workers: 4
+  grouping_schemas: dataset_schemas.yaml
+metadata:
+  age_scale: 100.0
+model:
+  dimension: 64
+  heads: 4
+  backbones:
+    tiny:
+      pretrained: false
+      frozen: false
+    efficientnet:
+      id: efficientnet_b0
+      pretrained: true
+      frozen: false
+    swin:
+      id: swin_tiny_patch4_window7_224
+      pretrained: true
+      frozen: false
+    dinov2:
+      id: facebook/dinov2-small
+      frozen: false
+    dinov3:
+      id: facebook/dinov3-vits16-pretrain-lvd1689m
+      frozen: false
+  architecture: crossskinnet
+training:
+  epochs: 30
+  batch_size: 32
+  image_size: 224
+  image_mean:
+  - 0.485
+  - 0.456
+  - 0.406
+  image_std:
+  - 0.229
+  - 0.224
+  - 0.225
+  lr: 0.001
+  backbone_lr_factor: 0.1
+  weight_decay: 0.0001
+  focal_gamma: 2.0
+  image_aux_weight: 0.25
+  mixed_precision: true
+  patience: 7
+  p_field: 0.2
+  p_all: 0.2
+  max_hours: 11
+  cpu_threads: 2
+evaluation:
+  bootstrap_repetitions: 1000
+  explanations_per_outcome: 10
+  shap_samples: 512
+workflow:
+  dataset_schemas: dataset_schemas.yaml
+  label_mapping: label_mapping.csv
+  site_mapping: site_mapping.yaml
+  seeds:
+  - 42
+  - 43
+  - 44
+  backbones:
+  - efficientnet
+  - swin
+  - dinov2
+  - dinov3
+  baselines:
+  - image_only
+  - concat
+  baseline_backbone: efficientnet
+  hash_cache_candidates:
+  - /kaggle/working/review_preparation/image_hashes.csv
+  - /kaggle/working/audit/image_hashes.csv

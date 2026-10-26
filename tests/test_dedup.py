@@ -97,8 +97,9 @@ def test_phash_collision_requires_review_and_blocks_stale_pool(tmp_path: Path):
     assert read_csv(output / 'deduped_train_pool.csv')[0]['image_id'] == 'a'
     rows[0]['is_duplicate'] = 'True'
     write_csv(reviews,rows)
-    run(cfg)
-    assert not read_csv(output / 'deduped_train_pool.csv')
+    with pytest.raises(ValueError,match='No development images'):
+        run(cfg)
+    assert not json.loads((output / 'dedup_status.json').read_text())['ready']
     assert len(read_csv(output / 'raw_test_pool.csv')) == 1
 
 
@@ -115,3 +116,51 @@ def test_all_distinct_sha_candidates_in_collision_bucket():
     hashes['1']['phash'] = 'ffffffffffffffff'
     exact, _ = _candidate_edges(rows,hashes,5,2)
     assert exact[0][:2] == (0,1)
+
+
+def test_quarantine_excludes_whole_groups_without_verdicts(tmp_path: Path):
+    """A hash collision quarantines development patients, never the external reference."""
+    import json, random
+    import yaml
+    from PIL import Image
+    output = tmp_path / 'output'
+    output.mkdir()
+    schema = tmp_path / 'schemas.yaml'
+    schema.write_text(yaml.safe_dump({'datasets':{'PAD-UFES-20':{'grouping':{'lesion_id_scope':'patient','required_group_field':'patient_id'}}}}))
+    rows = []
+    rng = random.Random(42)
+    # One uncertain collision plus another image from the same patient.
+    for index in range(4):
+        path = tmp_path / f'train{index}.png'
+        image = Image.new('RGB',(16,16),'red') if index==0 else Image.frombytes('RGB',(16,16),rng.randbytes(768))
+        image.save(path)
+        rows.append(dict(image_id=str(index),image_path=str(path),source_dataset='PAD-UFES-20',
+            patient_id='patient0' if index<2 else f'patient{index}',lesion_id=str(index)))
+    external = tmp_path / 'blue.png'
+    Image.new('RGB',(16,16),'blue').save(external)
+    write_csv(output / 'metadata_train_pool.csv',rows)
+    write_csv(output / 'raw_test_pool.csv',[dict(image_id='e',image_path=str(external),source_dataset='PH2')])
+    before = (output / 'raw_test_pool.csv').read_bytes()
+    cfg = tmp_path / 'config.yaml'
+    cfg.write_text(yaml.safe_dump({'seed':42,'paths':{'output_root':str(output)},
+        'dedup':{'near_duplicate_policy':'quarantine','grouping_schemas':str(schema)}}))
+    run(cfg)
+    status = json.loads((output / 'dedup_status.json').read_text())
+    assert status['ready'] and status['policy']=='quarantine' and status['pending_relevant_pairs']==0
+    assert status['quarantined_training_rows']==2
+    assert {r['patient_id'] for r in read_csv(output / 'deduped_train_pool.csv')}=={'patient2','patient3'}
+    assert all(not row['is_duplicate'] for row in read_csv(output / 'near_duplicate_reviews.csv'))
+    assert (output / 'raw_test_pool.csv').read_bytes()==before
+
+
+def test_quarantine_closes_over_verified_copies_and_patient_members():
+    """An uncertain endpoint cannot re-enter through another copy-linked group."""
+    from crossskinnet.data.quarantine import quarantine_groups
+    rows=[dict(source_dataset='PAD-UFES-20',image_id=str(i),patient_id='A' if i<2 else 'B',lesion_id=str(i))
+          for i in range(4)]
+    roots=[0,1,1,3,4]
+    excluded,reasons=quarantine_groups(rows,roots,{4},[(0,4)],
+        {'PAD-UFES-20':{'grouping':{'lesion_id_scope':'patient'}}})
+    assert excluded=={0,1,2,3} and 4 not in excluded
+    assert all(reason=='uncertain_candidate_group' for reason in reasons.values())
+    assert roots==[0,1,1,3,4]

@@ -113,6 +113,11 @@ def run(config_path: Path, schemas_path: Path) -> Path:
     write_csv(audit / 'metadata_train_pool.csv', train)
     write_csv(audit / 'raw_test_pool.csv', external)
     options = dict(cfg.get('dedup', {}))
+    if options.get('grouping_schemas'):
+        schema_file = Path(options['grouping_schemas'])
+        if not schema_file.is_absolute():
+            schema_file = config_path.resolve().parent / schema_file
+        options['grouping_schemas'] = str(schema_file)
     reviews = Path(options.get('reviews_csv') or output / 'near_duplicate_reviews.csv')
     if not reviews.is_absolute():
         reviews = config_path.resolve().parent / reviews

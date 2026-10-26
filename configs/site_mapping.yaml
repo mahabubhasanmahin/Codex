@@ -1,4 +1,33 @@
-# TODO: run 03_metadata.py inventory, then map each null raw site to one of
-# head_neck, trunk, upper_limb, lower_limb, hands_feet, other, using reviewed anatomy.
-# No raw anatomical equivalences are guessed here.
-datasets: {}
+# PAD raw values from uploaded raw_train_pool.csv; HAM values from uploaded metadata inspection.
+# Unknown/UNK remain missing via the loader. New unseen values fail; do not auto-fill.
+datasets:
+  PAD-UFES-20:
+    ABDOMEN: trunk
+    ARM: upper_limb
+    BACK: trunk
+    CHEST: trunk
+    EAR: head_neck
+    FACE: head_neck
+    FOOT: hands_feet
+    FOREARM: upper_limb
+    HAND: hands_feet
+    LIP: head_neck
+    NECK: head_neck
+    NOSE: head_neck
+    SCALP: head_neck
+    THIGH: lower_limb
+  HAM10000:
+    scalp: head_neck
+    ear: head_neck
+    face: head_neck
+    back: trunk
+    trunk: trunk
+    chest: trunk
+    upper extremity: upper_limb
+    abdomen: trunk
+    lower extremity: lower_limb
+    genital: other
+    neck: head_neck
+    hand: hands_feet
+    foot: hands_feet
+    acral: hands_feet

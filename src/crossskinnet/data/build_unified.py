@@ -102,7 +102,7 @@ def run(config_path: Path, mapping_path: Path, schemas_path: Path | None = None)
     if not status_file.exists():
         raise ValueError('Missing dedup_status.json; rerun stage 04 with the review-aware policy')
     status = json.loads(status_file.read_text())
-    if status.get('policy') != 'review' or not status.get('ready'):
+    if status.get('policy') not in ('review','quarantine') or not status.get('ready'):
         raise ValueError('Duplicate review is incomplete; review candidates and rerun stage 04 before building')
     if status.get('reviews_csv'):
         review_file = Path(status['reviews_csv'])
@@ -120,6 +120,9 @@ def run(config_path: Path, mapping_path: Path, schemas_path: Path | None = None)
         schemas = read_yaml(schema_file)['datasets']
     else:
         schemas = {}
+    if status['policy']=='quarantine':
+        if not schema_file.is_file() or hashlib.sha256(schema_file.read_bytes()).hexdigest()!=status.get('grouping_schema_sha256'):
+            raise ValueError('Grouping schema differs from group quarantine; rerun stage 04 with the intended schema')
     validate_target_labels(raw_train, cfg, 'Post-dedup development')
     train = assign_splits(raw_train, int(cfg['seed']), schemas)
     validate_target_labels([row for row in train if row['split']=='train'], cfg, 'Training split')
@@ -139,12 +142,13 @@ def run(config_path: Path, mapping_path: Path, schemas_path: Path | None = None)
         'datasets': {source: schema.get('grouping', {}) for source, schema in schemas.items()}}))
     write_csv(destination / 'metadata.csv', train)
     write_csv(destination / 'zero_shot.csv', external)
-    integrity = dict(policy='review', ready=True, files={name: hashlib.sha256((destination / name).read_bytes()).hexdigest()
+    integrity = dict(policy=status['policy'], ready=True, files={name: hashlib.sha256((destination / name).read_bytes()).hexdigest()
                      for name in ('metadata.csv','zero_shot.csv')})
     (destination / 'dataset_integrity.json').write_text(json.dumps(integrity, indent=2))
     write_csv(destination / 'label_mapping.csv', read_csv(mapping_path))
     counts = Counter((r['split'], r['source_dataset'], r['unified_label']) for r in train + external)
-    stats = {'seed': cfg['seed'], 'actual_development_sources': actual_sources, 'actual_external_sources': actual_external, 'requested_ratios': {'train': .7, 'val': .15, 'test': .15},
+    stats = {'seed': cfg['seed'], 'dedup_policy':status['policy'],
+             'quarantined_training_rows':status.get('quarantined_training_rows',0), 'actual_development_sources': actual_sources, 'actual_external_sources': actual_external, 'requested_ratios': {'train': .7, 'val': .15, 'test': .15},
              'actual_split_counts': dict(Counter(r['split'] for r in train)),
              'note': 'Ratios approximate because patient/lesion groups are indivisible.',
              'zero_shot_excluded_samples': sum(r['zero_shot_eligible'] == 'False' for r in external),
@@ -155,7 +159,9 @@ def run(config_path: Path, mapping_path: Path, schemas_path: Path | None = None)
         'See metadata.csv and zero_shot.csv. Paths are relative to this folder.\n'
         '256x256 RGB JPEGs, quality 95. NaN metadata is not statistically imputed.\n'
         'Group-level splits approximate 70/15/15; see dataset_stats.json.\n'
-        'Duplicate components touching external data are excluded from development.\n'
+        'Verified duplicate components touching external data are excluded from development.\n'
+        f"Cohort policy: {status['policy']}; group-quarantine exclusions: {status.get('quarantined_training_rows',0)}.\n"
+        'Group quarantine exclusions are not duplicate verdicts. Report cohort selection limits.\n'
         'Source dataset licenses and consent restrictions still apply.\n')
     _plots(train, destination)
     report('Unified development', train)
